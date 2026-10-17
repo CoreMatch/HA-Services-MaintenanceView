@@ -1,6 +1,7 @@
 package models
 
 type Config struct {
+	Version  string         `yaml:"version" json:"version"`
 	Server   ServerConfig   `yaml:"server" json:"server"`
 	Deployer DeployerConfig `yaml:"deployer" json:"deployer"`
 	State    StateConfig    `yaml:"state" json:"state"`
@@ -22,9 +23,10 @@ type StateConfig struct {
 
 func DefaultConfig() *Config {
 	return &Config{
+		Version: "1",
 		Server: ServerConfig{
-			Listen:        ":18081",
-			PublicBaseURL: "http://127.0.0.1:18081",
+			Listen:        ":2771",
+			PublicBaseURL: "http://127.0.0.1:2771",
 			FrontendDist:  "./frontend/dist",
 		},
 		Deployer: DeployerConfig{
