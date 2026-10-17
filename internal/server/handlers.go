@@ -6,6 +6,7 @@ import (
 	"net/http"
 	"os"
 	"path/filepath"
+	"slices"
 	"strings"
 	"time"
 
@@ -126,6 +127,13 @@ func (h *Handler) SaveProjectDeployment(c *gin.Context) {
 		})
 		return
 	}
+	if input.Port < 0 || input.Port > 65535 {
+		c.JSON(http.StatusBadRequest, gin.H{
+			"success": false,
+			"message": "port must be between 1 and 65535",
+		})
+		return
+	}
 
 	remote, err := h.client.Projects(c.Request.Context())
 	if err != nil {
@@ -144,6 +152,13 @@ func (h *Handler) SaveProjectDeployment(c *gin.Context) {
 		})
 		return
 	}
+	if _, ok := getBootstrapSpec(projectName); ok && input.Port <= 0 {
+		c.JSON(http.StatusBadRequest, gin.H{
+			"success": false,
+			"message": "port is required for initialization",
+		})
+		return
+	}
 
 	settings, err := h.store.Load()
 	if err != nil {
@@ -154,8 +169,21 @@ func (h *Handler) SaveProjectDeployment(c *gin.Context) {
 		})
 		return
 	}
+	if input.Port > 0 {
+		if err := validateUniquePort(projectName, input.Port, remote.Projects, settings); err != nil {
+			c.JSON(http.StatusBadRequest, gin.H{
+				"success": false,
+				"message": "invalid port assignment",
+				"error":   err.Error(),
+			})
+			return
+		}
+	}
 
-	settings.Projects[projectName] = models.ProjectDeployment{DeployDir: deployDir}
+	settings.Projects[projectName] = models.ProjectDeployment{
+		DeployDir: deployDir,
+		Port:      input.Port,
+	}
 	if err := h.store.Save(settings); err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{
 			"success": false,
@@ -167,10 +195,11 @@ func (h *Handler) SaveProjectDeployment(c *gin.Context) {
 
 	c.JSON(http.StatusOK, gin.H{
 		"success": true,
-		"message": "deployment path saved",
+		"message": "deployment settings saved",
 		"data": gin.H{
 			"name":       projectName,
 			"deploy_dir": deployDir,
+			"port":       input.Port,
 		},
 	})
 }
@@ -237,6 +266,114 @@ func (h *Handler) RunProjectPrecheck(c *gin.Context) {
 	})
 }
 
+func (h *Handler) InitializeProject(c *gin.Context) {
+	projectName := c.Param("name")
+
+	var input models.ProjectInitializationRequest
+	_ = c.ShouldBindJSON(&input)
+
+	spec, ok := getBootstrapSpec(projectName)
+	if !ok {
+		c.JSON(http.StatusBadRequest, gin.H{
+			"success": false,
+			"message": "initialization is not supported for this project yet",
+		})
+		return
+	}
+
+	remote, err := h.client.Projects(c.Request.Context())
+	if err != nil {
+		c.JSON(http.StatusBadGateway, gin.H{
+			"success": false,
+			"message": "failed to load deployer projects",
+			"error":   err.Error(),
+		})
+		return
+	}
+
+	project, artifact, err := selectProjectArtifact(remote.Projects, projectName, input.ArtifactID)
+	if err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{
+			"success": false,
+			"message": "failed to initialize project",
+			"error":   err.Error(),
+		})
+		return
+	}
+
+	settings, err := h.store.Load()
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{
+			"success": false,
+			"message": "failed to load project settings",
+			"error":   err.Error(),
+		})
+		return
+	}
+
+	deployment := settings.Projects[project.Name]
+	deployDir := strings.TrimSpace(deployment.DeployDir)
+	if deployDir == "" {
+		c.JSON(http.StatusBadRequest, gin.H{
+			"success": false,
+			"message": "deploy_dir is not configured for this project",
+		})
+		return
+	}
+
+	if deployment.Port <= 0 {
+		c.JSON(http.StatusBadRequest, gin.H{
+			"success": false,
+			"message": "port is not configured for this project",
+		})
+		return
+	}
+
+	if err := validateUniquePort(project.Name, deployment.Port, remote.Projects, settings); err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{
+			"success": false,
+			"message": "invalid port assignment",
+			"error":   err.Error(),
+		})
+		return
+	}
+
+	if _, err := runPrecheck(project.Name, deployDir, artifact); err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{
+			"success": false,
+			"message": "precheck failed before initialization",
+			"error":   err.Error(),
+		})
+		return
+	}
+
+	dependencyPorts, err := collectDependencyPorts(spec, settings)
+	if err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{
+			"success": false,
+			"message": "dependency ports are incomplete",
+			"error":   err.Error(),
+		})
+		return
+	}
+
+	result, err := initializeProjectConfig(project.Name, deployDir, artifact, spec, deployment.Port, dependencyPorts)
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{
+			"success": false,
+			"message": "project initialization failed",
+			"error":   err.Error(),
+		})
+		return
+	}
+
+	c.JSON(http.StatusOK, gin.H{
+		"success": true,
+		"message": "project initialization completed",
+		"data":    result,
+	})
+}
+
 func (h *Handler) buildProjectViews(ctx context.Context) ([]models.ProjectView, string, error) {
 	remote, err := h.client.Projects(ctx)
 	if err != nil {
@@ -250,14 +387,28 @@ func (h *Handler) buildProjectViews(ctx context.Context) ([]models.ProjectView, 
 
 	projects := make([]models.ProjectView, 0, len(remote.Projects))
 	for _, project := range remote.Projects {
+		spec, supported := getBootstrapSpec(project.Name)
 		view := models.ProjectView{
-			Name:        project.Name,
-			DisplayName: project.DisplayName,
-			Channel:     project.Channel,
-			Version:     project.Version,
-			PublishedAt: project.PublishedAt,
-			DeployDir:   settings.Projects[project.Name].DeployDir,
-			Artifacts:   make([]models.ProjectArtifact, 0, len(project.Artifacts)),
+			Name:           project.Name,
+			DisplayName:    project.DisplayName,
+			Channel:        project.Channel,
+			Version:        project.Version,
+			PublishedAt:    project.PublishedAt,
+			DeployDir:      settings.Projects[project.Name].DeployDir,
+			Port:           settings.Projects[project.Name].Port,
+			InitSupported:  supported,
+			Artifacts:      make([]models.ProjectArtifact, 0, len(project.Artifacts)),
+			DefaultPort:    spec.DefaultPort,
+			ConfigFileName: spec.ConfigFileName,
+		}
+		if supported {
+			view.InitDependencies = make([]models.ProjectDependency, 0, len(spec.Dependencies))
+			for _, dependency := range spec.Dependencies {
+				view.InitDependencies = append(view.InitDependencies, models.ProjectDependency{
+					Name:   dependency.ProjectName,
+					Fields: slices.Clone(dependency.FieldPaths),
+				})
+			}
 		}
 
 		for _, artifact := range project.Artifacts {
@@ -313,6 +464,43 @@ func selectProjectArtifact(projects []models.RemoteProject, projectName, artifac
 	}
 
 	return nil, nil, fmt.Errorf("project %q not found", projectName)
+}
+
+func validateUniquePort(projectName string, port int, remoteProjects []models.RemoteProject, settings *models.ProjectSettings) error {
+	if port <= 0 {
+		return nil
+	}
+
+	knownProjects := make(map[string]struct{}, len(remoteProjects))
+	for _, project := range remoteProjects {
+		knownProjects[project.Name] = struct{}{}
+	}
+
+	for name, deployment := range settings.Projects {
+		if name == projectName || deployment.Port <= 0 {
+			continue
+		}
+		if _, ok := knownProjects[name]; !ok {
+			continue
+		}
+		if deployment.Port == port {
+			return fmt.Errorf("port %d is already assigned to project %q", port, name)
+		}
+	}
+
+	return nil
+}
+
+func collectDependencyPorts(spec bootstrapSpec, settings *models.ProjectSettings) (map[string]int, error) {
+	ports := make(map[string]int, len(spec.Dependencies))
+	for _, dependency := range spec.Dependencies {
+		port := settings.Projects[dependency.ProjectName].Port
+		if port <= 0 {
+			return nil, fmt.Errorf("project %q needs the port of %q to be saved first", dependency.ProjectName, dependency.ProjectName)
+		}
+		ports[dependency.ProjectName] = port
+	}
+	return ports, nil
 }
 
 func buildDownloadURL(baseURL, projectName, downloadPath string) string {

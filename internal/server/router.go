@@ -25,6 +25,7 @@ func NewRouter(cfg *models.Config, client *deployer.Client, store *state.Store) 
 		api.GET("/projects", handler.GetProjects)
 		api.PUT("/projects/:name/deployment", handler.SaveProjectDeployment)
 		api.POST("/projects/:name/precheck", handler.RunProjectPrecheck)
+		api.POST("/projects/:name/initialize", handler.InitializeProject)
 		api.GET("/deployer/healthz", handler.GetDeployerHealthz)
 		api.GET("/deployer/manifest", handler.GetDeployerManifest)
 	}

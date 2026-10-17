@@ -18,7 +18,17 @@ type Project = {
   version: string;
   published_at?: string;
   deploy_dir?: string;
+  port?: number;
+  default_port?: number;
+  init_supported: boolean;
+  config_file_name?: string;
+  init_dependencies?: ProjectDependency[];
   artifacts: ProjectArtifact[];
+};
+
+type ProjectDependency = {
+  name: string;
+  fields: string[];
 };
 
 type ProjectsResponse = {
@@ -37,6 +47,24 @@ type PrecheckResult = {
   file_exists: boolean;
   file_mode_before?: string;
   file_mode_after?: string;
+  message: string;
+};
+
+type InitializationChange = {
+  field: string;
+  value: string;
+};
+
+type InitializationResult = {
+  project_name: string;
+  artifact_id: string;
+  deploy_dir: string;
+  port: number;
+  executable_path: string;
+  config_path: string;
+  config_generated: boolean;
+  changes: InitializationChange[];
+  dependency_ports?: Record<string, number>;
   message: string;
 };
 
@@ -111,9 +139,12 @@ export default function App() {
   const [projects, setProjects] = useState<Project[]>([]);
   const [generatedAt, setGeneratedAt] = useState("");
   const [deployDirs, setDeployDirs] = useState<Record<string, string>>({});
+  const [ports, setPorts] = useState<Record<string, string>>({});
   const [saving, setSaving] = useState<Record<string, boolean>>({});
   const [checking, setChecking] = useState<Record<string, boolean>>({});
+  const [initializing, setInitializing] = useState<Record<string, boolean>>({});
   const [prechecks, setPrechecks] = useState<Record<string, PrecheckResult>>({});
+  const [initializations, setInitializations] = useState<Record<string, InitializationResult>>({});
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [notice, setNotice] = useState<string | null>(null);
@@ -135,6 +166,14 @@ export default function App() {
       setDeployDirs(
         Object.fromEntries(payload.projects.map((project) => [project.name, project.deploy_dir || ""]))
       );
+      setPorts(
+        Object.fromEntries(
+          payload.projects.map((project) => [
+            project.name,
+            String(project.port || project.default_port || ""),
+          ])
+        )
+      );
     } catch (err) {
       setError(err instanceof Error ? err.message : String(err));
     } finally {
@@ -144,8 +183,13 @@ export default function App() {
 
   async function saveDeployment(project: Project) {
     const deployDir = (deployDirs[project.name] || "").trim();
+    const port = Number.parseInt((ports[project.name] || "").trim(), 10);
     if (!deployDir) {
       setNotice(`请先填写 ${project.display_name || project.name} 的部署目录`);
+      return;
+    }
+    if (project.init_supported && (!Number.isInteger(port) || port <= 0)) {
+      setNotice(`请先填写 ${project.display_name || project.name} 的服务端口`);
       return;
     }
 
@@ -154,9 +198,9 @@ export default function App() {
     try {
       await requestJSON(`/api/projects/${project.name}/deployment`, {
         method: "PUT",
-        body: JSON.stringify({ deploy_dir: deployDir }),
+        body: JSON.stringify({ deploy_dir: deployDir, port: Number.isInteger(port) ? port : 0 }),
       });
-      setNotice(`${project.display_name || project.name} 的部署目录已保存`);
+      setNotice(`${project.display_name || project.name} 的部署配置已保存`);
       await loadProjects();
     } catch (err) {
       setNotice(err instanceof Error ? err.message : String(err));
@@ -191,15 +235,41 @@ export default function App() {
     }
   }
 
+  async function initializeProject(project: Project) {
+    const artifact = project.artifacts[0];
+    if (!artifact) {
+      setNotice(`${project.display_name || project.name} 当前没有可用二进制`);
+      return;
+    }
+
+    setInitializing((current) => ({ ...current, [project.name]: true }));
+    setNotice(null);
+    try {
+      const response = await requestJSON(`/api/projects/${project.name}/initialize`, {
+        method: "POST",
+        body: JSON.stringify({ artifact_id: artifact.id }),
+      });
+      setInitializations((current) => ({
+        ...current,
+        [project.name]: response.data as InitializationResult,
+      }));
+      setNotice(`${project.display_name || project.name} 初始化已完成`);
+    } catch (err) {
+      setNotice(err instanceof Error ? err.message : String(err));
+    } finally {
+      setInitializing((current) => ({ ...current, [project.name]: false }));
+    }
+  }
+
   return (
     <main style={pageStyle}>
       <div style={{ maxWidth: 1160, margin: "0 auto" }}>
         <header style={{ marginBottom: 24 }}>
           <p style={{ margin: 0, color: "#7d8590" }}>HA Services Maintenance View</p>
-          <h1 style={{ margin: "8px 0 12px", fontSize: 32 }}>项目列表与部署路径管理</h1>
+          <h1 style={{ margin: "8px 0 12px", fontSize: 32 }}>项目部署与开荒初始化</h1>
           <p style={{ margin: 0, color: "#9da7b3", lineHeight: 1.6 }}>
-            后端只提供项目和制品信息。每个项目的实际部署路径由你在 WebUI 上定义，并由
-            HASMV 本地保存。
+            WebUI 负责保存每个项目的部署目录和服务端口。初始化时会先执行单文件生成默认
+            config，再按你编排的端口自动改写服务之间的调用地址。
           </p>
         </header>
 
@@ -258,6 +328,7 @@ export default function App() {
           ? projects.map((project) => {
               const artifact = project.artifacts[0];
               const precheck = prechecks[project.name];
+              const initialization = initializations[project.name];
 
               return (
                 <section key={project.name} style={cardStyle}>
@@ -299,6 +370,38 @@ export default function App() {
                         placeholder="/www/wwwroot/ha"
                         style={inputStyle}
                       />
+                      <label style={{ display: "block", marginTop: 12, marginBottom: 8, color: "#9da7b3" }}>
+                        服务端口
+                      </label>
+                      <input
+                        value={ports[project.name] || ""}
+                        onChange={(event) =>
+                          setPorts((current) => ({
+                            ...current,
+                            [project.name]: event.target.value.replace(/[^\d]/g, ""),
+                          }))
+                        }
+                        placeholder={String(project.default_port || "")}
+                        style={inputStyle}
+                        inputMode="numeric"
+                      />
+                      {project.init_supported ? (
+                        <div style={{ marginTop: 10, color: "#7d8590", lineHeight: 1.6 }}>
+                          <div>初始化配置文件: {project.config_file_name || "config.yaml"}</div>
+                          <div>推荐默认端口: {project.default_port || "未定义"}</div>
+                          <div>
+                            自动联动:
+                            {" "}
+                            {project.init_dependencies && project.init_dependencies.length > 0
+                              ? project.init_dependencies
+                                  .map((dependency) => `${dependency.name} (${dependency.fields.join(", ")})`)
+                                  .join("；")
+                              : "当前服务只改写自己的端口字段"}
+                          </div>
+                        </div>
+                      ) : (
+                        <div style={{ marginTop: 10, color: "#7d8590" }}>当前项目暂未接入自动初始化规则</div>
+                      )}
                       <div
                         style={{
                           display: "flex",
@@ -312,7 +415,7 @@ export default function App() {
                           onClick={() => void saveDeployment(project)}
                           disabled={Boolean(saving[project.name])}
                         >
-                          {saving[project.name] ? "保存中..." : "保存部署目录"}
+                          {saving[project.name] ? "保存中..." : "保存部署配置"}
                         </button>
                         <button
                           style={secondaryButtonStyle}
@@ -321,6 +424,15 @@ export default function App() {
                         >
                           {checking[project.name] ? "检查中..." : "预检查并修正权限"}
                         </button>
+                        {project.init_supported ? (
+                          <button
+                            style={{ ...buttonStyle, background: "#8957e5" }}
+                            onClick={() => void initializeProject(project)}
+                            disabled={Boolean(initializing[project.name])}
+                          >
+                            {initializing[project.name] ? "初始化中..." : "生成并初始化配置"}
+                          </button>
+                        ) : null}
                       </div>
                     </div>
                   </div>
@@ -377,6 +489,46 @@ export default function App() {
                             : "文件尚不存在，当前只修正了目录权限"}
                         </div>
                         <div>说明: {precheck.message}</div>
+                      </div>
+                    </div>
+                  ) : null}
+
+                  {initialization ? (
+                    <div style={{ marginTop: 20 }}>
+                      <h3 style={{ marginTop: 0 }}>最近一次初始化结果</h3>
+                      <div
+                        style={{
+                          background: "#010409",
+                          borderRadius: 8,
+                          padding: 14,
+                          lineHeight: 1.7,
+                        }}
+                      >
+                        <div>部署目录: {initialization.deploy_dir}</div>
+                        <div>执行文件: {initialization.executable_path}</div>
+                        <div>配置文件: {initialization.config_path}</div>
+                        <div>当前端口: {initialization.port}</div>
+                        <div>
+                          默认配置生成: {initialization.config_generated ? "本次已生成" : "已存在，直接改写"}
+                        </div>
+                        <div>
+                          依赖端口:
+                          {" "}
+                          {initialization.dependency_ports && Object.keys(initialization.dependency_ports).length > 0
+                            ? Object.entries(initialization.dependency_ports)
+                                .map(([name, port]) => `${name}:${port}`)
+                                .join("；")
+                            : "无"}
+                        </div>
+                        <div>说明: {initialization.message}</div>
+                        <div style={{ marginTop: 10, color: "#9da7b3" }}>本次写入字段</div>
+                        <div style={{ marginTop: 6 }}>
+                          {initialization.changes.map((change) => (
+                            <div key={`${change.field}:${change.value}`}>
+                              {change.field} = {change.value}
+                            </div>
+                          ))}
+                        </div>
                       </div>
                     </div>
                   ) : null}
