@@ -6,6 +6,7 @@ import (
 	"HA-Services-MaintenanceView/internal/config"
 	"HA-Services-MaintenanceView/internal/deployer"
 	"HA-Services-MaintenanceView/internal/server"
+	"HA-Services-MaintenanceView/internal/state"
 )
 
 func main() {
@@ -15,7 +16,8 @@ func main() {
 	}
 
 	client := deployer.NewClient(cfg.Deployer.BaseURL)
-	router := server.NewRouter(cfg, client)
+	store := state.NewStore(cfg.State.ProjectsPath)
+	router := server.NewRouter(cfg, client, store)
 
 	log.Printf("HA Services Maintenance View listening on %s", cfg.Server.Listen)
 	if err := router.Run(cfg.Server.Listen); err != nil {

@@ -8,12 +8,13 @@ import (
 
 	"HA-Services-MaintenanceView/internal/deployer"
 	"HA-Services-MaintenanceView/internal/models"
+	"HA-Services-MaintenanceView/internal/state"
 	"github.com/gin-gonic/gin"
 )
 
-func NewRouter(cfg *models.Config, client *deployer.Client) *gin.Engine {
+func NewRouter(cfg *models.Config, client *deployer.Client, store *state.Store) *gin.Engine {
 	router := gin.Default()
-	handler := NewHandler(cfg, client)
+	handler := NewHandler(cfg, client, store)
 
 	router.GET("/healthz", handler.Healthz)
 
@@ -21,6 +22,9 @@ func NewRouter(cfg *models.Config, client *deployer.Client) *gin.Engine {
 	{
 		api.GET("/healthz", handler.Healthz)
 		api.GET("/config", handler.GetConfig)
+		api.GET("/projects", handler.GetProjects)
+		api.PUT("/projects/:name/deployment", handler.SaveProjectDeployment)
+		api.POST("/projects/:name/precheck", handler.RunProjectPrecheck)
 		api.GET("/deployer/healthz", handler.GetDeployerHealthz)
 		api.GET("/deployer/manifest", handler.GetDeployerManifest)
 	}

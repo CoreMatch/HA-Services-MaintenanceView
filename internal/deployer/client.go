@@ -8,6 +8,8 @@ import (
 	"net/http"
 	"strings"
 	"time"
+
+	"HA-Services-MaintenanceView/internal/models"
 )
 
 type Client struct {
@@ -30,6 +32,17 @@ func (c *Client) Healthz(ctx context.Context) (map[string]any, error) {
 
 func (c *Client) Manifest(ctx context.Context) (map[string]any, error) {
 	return c.getEnvelope(ctx, "/api/v1/manifest")
+}
+
+func (c *Client) Projects(ctx context.Context) (*models.RemoteProjectsEnvelope, error) {
+	var payload models.RemoteProjectsEnvelope
+	if err := c.getData(ctx, "/api/v1/projects", &payload); err != nil {
+		return nil, err
+	}
+	if payload.Projects == nil {
+		payload.Projects = []models.RemoteProject{}
+	}
+	return &payload, nil
 }
 
 func (c *Client) getEnvelope(ctx context.Context, path string) (map[string]any, error) {
@@ -59,4 +72,23 @@ func (c *Client) getEnvelope(ctx context.Context, path string) (map[string]any, 
 	}
 
 	return envelope, nil
+}
+
+func (c *Client) getData(ctx context.Context, path string, target any) error {
+	envelope, err := c.getEnvelope(ctx, path)
+	if err != nil {
+		return err
+	}
+
+	data, ok := envelope["data"]
+	if !ok {
+		return fmt.Errorf("deployer response missing data field")
+	}
+
+	raw, err := json.Marshal(data)
+	if err != nil {
+		return err
+	}
+
+	return json.Unmarshal(raw, target)
 }
