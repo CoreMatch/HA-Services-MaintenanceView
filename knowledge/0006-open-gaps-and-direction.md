@@ -45,13 +45,17 @@ Record the gaps as-is.
 - **Priority/intent:** which of the gaps above are actually planned, and in
   which order? The repository shows no commits after `55962a3` (2026-11-03),
   and no design notes exist in-repo; intent cannot be inferred from code.
-- **0777 permissions (0004):** deliberate single-operator convenience or a
-  placeholder for proper permission handling?
 - **`public_base_url` (0005):** reserved for future redirects/links, or
   vestigial?
 - **Relationship to HA-Contract:** if/when this project stabilizes, whether
   its API should be contracted at all remains the author's call; today it is
   explicitly excluded.
+
+### Resolved (author confirmed 2026-11-04)
+
+- **0777 permissions (0004):** confirmed as deliberate convenience for
+  single-operator self-hosting, not a placeholder. Costs (multi-user or
+  network-exposed hosts) are recorded in 0004.
 
 ## Consequences
 

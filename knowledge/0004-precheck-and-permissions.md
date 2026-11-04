@@ -2,7 +2,9 @@
 
 ## Status
 
-Accepted (records current state; 0777 permissions recorded as-is)
+Accepted — the 0777 permission behavior is **confirmed by the author
+(2026-11-04) as deliberate convenience for single-operator self-hosting**,
+not an oversight. Its costs are recorded below.
 
 ## Date
 
@@ -32,13 +34,25 @@ Record exactly what precheck does (`internal/server/handlers.go:510-557`):
 It does **not**: download anything, verify sha256 or size, check disk space,
 check the running platform, or validate the artifact against the manifest.
 
-## Consequences (recorded as-is)
+## Consequences (confirmed design + costs)
 
 - **World-writable permissions (0777)** on the deploy directory and the
-  service binary are the intended outcome of this flow. This is a security
-  trade-off; whether it is deliberate convenience for a single-operator
-  self-hosted box is *pending author confirmation*. The knowledge base
-  records the behavior without endorsing it.
+  service binary are the intended outcome of this flow. The author confirmed
+  on 2026-11-04 that this is a **deliberate convenience for single-operator
+  self-hosting**, not an oversight. It removes all permission friction for
+  the one operator who both runs this service and manages the target
+  binaries by hand.
+- **Cost / when this does not hold.** The 0777 posture is only defensible on
+  a single-user, trusted, non-exposed host. It stops being acceptable if:
+  - the host has **multiple users** (any local user can replace the service
+    binary between precheck and start, i.e. a local privilege-escalation /
+    tampering path); or
+  - the deploy directory or this service is **exposed to an untrusted
+    network** (the unauthenticated precheck endpoint, see 0001/0006, lets
+    anyone reachable chmod/create directories).
+  In either of those environments the permission model would need to be
+  tightened; nothing in this entry is an endorsement of 0777 beyond the
+  stated single-operator case.
 - Because precheck never fetches the artifact, the "update" story still
   depends on the operator downloading the binary manually from the link the
   UI shows (see 0001).
