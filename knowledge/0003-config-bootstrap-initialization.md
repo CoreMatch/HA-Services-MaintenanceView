@@ -12,17 +12,17 @@ Accepted (records current state; limited coverage by design at this stage)
 
 "First-deployment configuration initialization" is explicitly **out of
 scope of the version-manifest contract** (HA-Contract
-`docs/dev/HA-Services-Deployer/version-manifest.md`, Purpose). This service
-nonetheless implements a first-install config bootstrap for a few services,
-added in commit `88534c6` (2026-10-17). It is internal behavior, not a
-contract.
+`/home/lnb/Desktop/HA/HA-Contract/docs/dev/HA-Services-Deployer/version-manifest.md::Purpose`).
+This service nonetheless implements a first-install config bootstrap for a
+few services, added in commit `88534c6` (2026-10-17). It is internal
+behavior, not a contract.
 
 ## Decision
 
 Record exactly what the bootstrap does and assumes:
 
 - **Coverage: three hard-coded specs**
-  (`internal/server/bootstrap_specs.go:16-52`):
+  (`internal/server/bootstrap_specs.go::bootstrapSpecs`):
   - `hrpauth` — config `config.yaml`, default port 2778, port field
     `server.port`, depends on `hrpauth-yggdrasil-api` (writes
     `yggdrasil_api.base_url`).
@@ -33,25 +33,29 @@ Record exactly what the bootstrap does and assumes:
     self URL `server.public_url`, depends on `hrpauth` (writes
     `upstream.base_url`).
   Any other project: "initialization is not supported for this project yet"
-  (`internal/server/handlers.go:276-282`).
+  (`internal/server/handlers.go::InitializeProject`).
 - **Precondition: the binary must already exist.** Initialization fails if
   `<deploy_dir>/<artifact.file_name>` is not present
-  (`internal/server/bootstrap_runtime.go:27-35`). The service never downloads
-  it (see 0001).
+  (`internal/server/bootstrap_runtime.go::initializeProjectConfig`). The
+  service never downloads it (see 0001).
 - **Default-config generation by executing the target binary.** If the
   config file does not exist, the bootstrap **runs the target executable**
   and polls up to 8 seconds for the config file to appear, then cancels the
-  process (`internal/server/bootstrap_runtime.go:17`, `:118-175`). This
+  process (`internal/server/bootstrap_runtime.go::generatedConfigWaitTimeout`,
+  `internal/server/bootstrap_runtime.go::ensureGeneratedConfig`). This
   relies on the target service's own "generate default config on first
   start" behavior. *Not verified here per-service* — recorded as an
   assumption about sibling services' behavior.
 - **Patch phase.** The (generated or existing) YAML is parsed and patched:
   port field set to `:<port>`, self-URL fields and dependency fields set to
-  `http://localhost:<port>` (`internal/server/bootstrap_runtime.go:58-91`,
-  `:211-217`). Dependency ports must already be saved, otherwise the request
-  fails (`internal/server/handlers.go:350-358`, `:494-504`).
+  `http://localhost:<port>`
+  (`internal/server/bootstrap_runtime.go::initializeProjectConfig`,
+  `internal/server/bootstrap_runtime.go::formatListenAddress`,
+  `internal/server/bootstrap_runtime.go::formatLocalURL`). Dependency ports
+  must already be saved, otherwise the request fails
+  (`internal/server/handlers.go::collectDependencyPorts`).
 - Precheck runs before initialization inside the same request
-  (`internal/server/handlers.go:341-348`).
+  (`internal/server/handlers.go::InitializeProject`).
 
 ## Consequences
 
@@ -70,8 +74,16 @@ Record exactly what the bootstrap does and assumes:
 
 ## Evidence
 
-- `internal/server/bootstrap_specs.go:16-52` — the three specs.
-- `internal/server/bootstrap_runtime.go:17`, `:27-35`, `:58-91`, `:118-175`, `:211-217`.
-- `internal/server/handlers.go:269-375` — initialize handler flow; `:350-358`, `:494-504` — dependency port requirements.
+- `internal/server/bootstrap_specs.go::bootstrapSpecs` — the three specs.
+- `internal/server/bootstrap_runtime.go::generatedConfigWaitTimeout`,
+  `internal/server/bootstrap_runtime.go::initializeProjectConfig`,
+  `internal/server/bootstrap_runtime.go::ensureGeneratedConfig`,
+  `internal/server/bootstrap_runtime.go::formatListenAddress`,
+  `internal/server/bootstrap_runtime.go::formatLocalURL`.
+- `internal/server/handlers.go::InitializeProject` — initialize handler flow;
+  `internal/server/handlers.go::collectDependencyPorts` — dependency port
+  requirements.
 - Commit: `88534c6` (initialization workflow and API).
-- Contract context: HA-Contract `version-manifest.md` Purpose (first-deployment config initialization is out of manifest scope).
+- Contract context: HA-Contract
+  `/home/lnb/Desktop/HA/HA-Contract/docs/dev/HA-Services-Deployer/version-manifest.md::Purpose`
+  (first-deployment config initialization is out of manifest scope).
