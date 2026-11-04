@@ -18,17 +18,17 @@ name suggests broader checks; the implementation is narrow.
 
 ## Decision
 
-Record exactly what precheck does (`internal/server/handlers.go:510-557`):
+Record exactly what precheck does (`internal/server/handlers.go::runPrecheck`):
 
 1. Requires `deploy_dir` to be saved for the project
-   (`internal/server/handlers.go:243-250`).
+   (`internal/server/handlers.go::RunProjectPrecheck`).
 2. If the deploy directory does not exist, creates it with mode `0777`
-   (`handlers.go:519-523`).
+   (`internal/server/handlers.go::runPrecheck`).
 3. `chmod`s the deploy directory to `0777` unconditionally
-   (`handlers.go:531-534`).
+   (`internal/server/handlers.go::runPrecheck`).
 4. If `<deploy_dir>/<artifact.file_name>` exists, `chmod`s it to `0777`
-   (`handlers.go:548-553`); otherwise reports that the file does not exist
-   yet (`handlers.go:540-545`).
+   (`internal/server/handlers.go::runPrecheck`); otherwise reports that the
+   file does not exist yet (`internal/server/handlers.go::runPrecheck`).
 5. Returns before/after modes and a message; nothing else.
 
 It does **not**: download anything, verify sha256 or size, check disk space,
@@ -57,12 +57,14 @@ check the running platform, or validate the artifact against the manifest.
   depends on the operator downloading the binary manually from the link the
   UI shows (see 0001).
 - The precheck result is displayed verbatim in the UI
-  (`frontend/src/App.tsx:468-494`).
+  (`frontend/src/App.tsx::directory_mode_before`).
 
 ## Evidence
 
-- `internal/server/handlers.go:207-267` — precheck handler.
-- `internal/server/handlers.go:510-557` — `runPrecheck` implementation (0777 at lines 520, 531, 550).
-- `internal/models/project.go:72-84` — result shape.
-- `frontend/src/App.tsx:212-236`, `:468-494` — UI trigger and rendering.
+- `internal/server/handlers.go::RunProjectPrecheck` — precheck handler.
+- `internal/server/handlers.go::runPrecheck` — implementation (mode `0o777`
+  passed to `os.MkdirAll` and to both `os.Chmod` calls).
+- `internal/models/project.go::UpdatePrecheckResult` — result shape.
+- `frontend/src/App.tsx::runPrecheck`,
+  `frontend/src/App.tsx::directory_mode_before` — UI trigger and rendering.
 - Commit: `f3bee6a` (project deployment management and API).

@@ -23,7 +23,7 @@ Record the gaps as-is.
 
 1. **Artifact download / install / update flow.** No backend code fetches an
    artifact from the deployer, replaces a binary, or restarts anything
-   (0001). The UI only links out (`frontend/src/App.tsx:457-460`).
+   (0001). The UI only links out (`frontend/src/App.tsx::download_url`).
 2. **Content verification.** sha256/size are displayed but never checked
    (0001). This mirrors the deployer-side gap (HA-Services-Deployer
    knowledge base 0003): today no component verifies artifact bytes.
@@ -33,11 +33,12 @@ Record the gaps as-is.
    `GET /api/config` and filesystem operations (precheck/init) — acceptable
    only behind a firewall.
 5. **Multi-artifact selection.** Only `artifacts[0]` is ever considered
-   (`internal/server/handlers.go:451-454`, `frontend/src/App.tsx:213`).
+   (`internal/server/handlers.go::selectProjectArtifact`,
+   `frontend/src/App.tsx::runPrecheck`).
 6. **Bootstrap coverage.** 3 services have specs; the rest of the platform
    (haskinlib, winnerproxy, mca-server, ha-webui-sdkhandler,
    ha-services-deployer, this service itself) has none
-   (`internal/server/bootstrap_specs.go:16-52`).
+   (`internal/server/bootstrap_specs.go::bootstrapSpecs`).
 7. **Docs.** README endpoint list and port are stale (0001, 0005).
 
 ### Questions pending author confirmation
@@ -68,7 +69,7 @@ Record the gaps as-is.
 ## Evidence
 
 - Cross-references: 0001 (inventory), 0002 (data flow), 0003 (bootstrap limits), 0004 (permissions), 0005 (config drift).
-- `internal/server/router.go:19-31` — full route table (no auth middleware).
-- `internal/server/handlers.go:451-454` — first-artifact default.
-- `internal/server/bootstrap_specs.go:16-52` — three specs only.
+- `internal/server/router.go::NewRouter` — full route table (no auth middleware).
+- `internal/server/handlers.go::selectProjectArtifact` — first-artifact default.
+- `internal/server/bootstrap_specs.go::bootstrapSpecs` — three specs only.
 - `git log` — last commit `55962a3` (2026-11-03).
