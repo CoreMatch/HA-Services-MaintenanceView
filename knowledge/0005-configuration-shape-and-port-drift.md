@@ -20,24 +20,27 @@ Record the verified shape and the drift:
 
 - **Auto-generated config.** Missing `config.yaml` → defaults are written to
   disk and the service **continues running with them**
-  (`internal/config/config.go:17-27`).
-- **Defaults in code** (`internal/models/config.go:24-39`): `version: "1"`,
-  `server.listen: ":2771"`, `server.public_base_url:
-  "http://127.0.0.1:2771"`, `server.frontend_dist: "./frontend/dist"`,
-  `deployer.base_url: "http://127.0.0.1:18080"`, `state.projects_path:
+  (`internal/config/config.go::Load`).
+- **Defaults in code** (`internal/models/config.go::DefaultConfig`):
+  `version: "1"`, `server.listen: ":2771"`, `server.public_base_url:
+  "http://127.0.0.1" + ":2771"`, `server.frontend_dist: "./frontend/dist"`,
+  `deployer.base_url: "http://127.0.0.1" + ":18080"`, `state.projects_path:
   "./data/projects.json"`.
 - **Migration framework at version "1" with an empty chain**
-  (`internal/config/migrations.go:11`, `:23-27`); a config without `version`
-  is stamped to `"1"` with a `.bak.<old-version>` backup written first
-  (`internal/config/migrations.go:36-42`, `:110-125`).
+  (`internal/config/migrations.go::ConfigVersion`,
+  `internal/config/migrations.go::configMigrations`); a config without
+  `version` is stamped to `"1"` with a `.bak.<old-version>` backup written
+  first (`internal/config/migrations.go::MigrateConfig`,
+  `internal/config/migrations.go::BackupConfigFile`).
 - **Port drift (recorded as-is).** Commit `bf28b0d` changed the default
   listen port/public URL **from 18081 to 2771** (commit message). Meanwhile:
-  - `README.md:37` tells users to open `http://127.0.0.1:18081`;
-  - the Docker image `EXPOSE 18081` (`Dockerfile:31`);
+  - `README.md:L37 @ 55962a3` tells users to open `http://127.0.0.1` +
+    `:18081`;
+  - the Docker image `EXPOSE 18081` (`Dockerfile:L31`);
   - the platform compose maps `${MAINTENANCEVIEW_PORT:-18081}` and renders a
     config with `listen: ":18081"` (HA-Services-Deployer
-    `deploy/docker-compose.yml`,
-    `deploy/config/ha-services-maintenance-view.yaml.tmpl`).
+    `/home/lnb/Desktop/HA/HA-Services-Deployer/deploy/docker-compose.yml (field: MAINTENANCEVIEW_PORT)`,
+    `/home/lnb/Desktop/HA/HA-Services-Deployer/deploy/config/ha-services-maintenance-view.yaml.tmpl (field: listen)`).
   So `:2771` applies only to a bare local `go run .`; every documented or
   composed deployment uses `:18081`.
   **Update 2026-11-05**: the README quick-start no longer hard-codes
@@ -65,9 +68,14 @@ Record the verified shape and the drift:
 
 ## Evidence
 
-- `internal/config/config.go:17-27` — auto-generate and continue.
-- `internal/models/config.go:24-39` — defaults.
-- `internal/config/migrations.go:11`, `:23-27`, `:36-42`, `:110-125`.
+- `internal/config/config.go::Load` — auto-generate and continue.
+- `internal/models/config.go::DefaultConfig` — defaults.
+- `internal/config/migrations.go::ConfigVersion`,
+  `internal/config/migrations.go::configMigrations`,
+  `internal/config/migrations.go::MigrateConfig`,
+  `internal/config/migrations.go::BackupConfigFile`.
 - Commit `bf28b0d` — message: "update default server listen port and public base URL from 18081 to 2771"; diff adds `config.yaml.bak.0`, `config.yaml.bak.1`.
-- `README.md:37`; `Dockerfile:31`; HA-Services-Deployer `deploy/config/ha-services-maintenance-view.yaml.tmpl` (`listen: ":18081"`).
+- `README.md:L37 @ 55962a3`; `Dockerfile:L31`; HA-Services-Deployer
+  `/home/lnb/Desktop/HA/HA-Services-Deployer/deploy/config/ha-services-maintenance-view.yaml.tmpl (field: listen)`
+  (`listen: ":18081"`).
 - `config.example.yaml` — matches code defaults (`:2771`).
