@@ -40,6 +40,10 @@ Record the verified shape and the drift:
     `deploy/config/ha-services-maintenance-view.yaml.tmpl`).
   So `:2771` applies only to a bare local `go run .`; every documented or
   composed deployment uses `:18081`.
+  **Update 2026-11-05**: the README quick-start no longer hard-codes
+  `:18081`; it now points at `:2771` (matching `config.example.yaml` and the
+  code default) and notes that container deployments use `:18081`. The
+  Dockerfile/compose side of the drift is unchanged.
 - **Accidental artifacts tracked in git.** `config.yaml.bak.0` and
   `config.yaml.bak.1` (both containing the old `:18081` config) were
   committed in `bf28b0d` and are still tracked. They are migration backups
@@ -48,9 +52,10 @@ Record the verified shape and the drift:
 
 ## Consequences
 
-- Operators running `go run .` without a config file get port 2771 and will
-  not match the README; composed deployments are unaffected (template sets
-  18081).
+- Operators running `go run .` without a config file get port 2771; the
+  README pointed at `:18081` until 2026-11-05 and now documents `:2771`
+  for the bare local run. Composed deployments are unaffected (template
+  sets 18081).
 - `public_base_url` is currently returned by `GET /api/config` but no
   verified code path consumes it for redirects or URL building (frontend
   uses relative paths). Its intended purpose is *pending author

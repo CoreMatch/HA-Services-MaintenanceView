@@ -34,12 +34,17 @@ npm install
 npm run build
 ```
 
-Then open `http://127.0.0.1:18081`.
+Then open `http://127.0.0.1:2771` — the port follows `server.listen` in
+`config.yaml` (the example file and the code default use `:2771`; container
+deployments use `:18081`, see the Dockerfile).
 
 ## API skeleton
 
 - `GET /healthz`
 - `GET /api/healthz`
 - `GET /api/config`
+- `GET /api/projects`
+- `POST /api/projects/:name/precheck`
+- `POST /api/projects/:name/initialize`
 - `GET /api/deployer/healthz`
 - `GET /api/deployer/manifest`
