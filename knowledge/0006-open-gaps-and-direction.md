@@ -4,10 +4,6 @@
 
 Accepted (internal gap inventory; nothing here is a commitment or contract)
 
-## Date
-
-2026-11-04
-
 ## Context
 
 This project is work-in-progress and outside the contract surface (see
@@ -39,20 +35,20 @@ Record the gaps as-is.
    (haskinlib, winnerproxy, mca-server, ha-webui-sdkhandler,
    ha-services-deployer, this service itself) has none
    (`internal/server/bootstrap_specs.go::bootstrapSpecs`).
-7. **Docs.** README endpoint list and port are stale (0001, 0005).
+7. **Docs.** The README API skeleton omits the deployment PUT route (0001).
 
 ### Questions pending author confirmation
 
 - **Priority/intent:** which of the gaps above are actually planned, and in
-  which order? The repository shows no commits after `55962a3` (2026-11-03),
-  and no design notes exist in-repo; intent cannot be inferred from code.
+  which order? No design notes exist in-repo; intent cannot be inferred
+  from code.
 - **`public_base_url` (0005):** reserved for future redirects/links, or
   vestigial?
 - **Relationship to HA-Contract:** if/when this project stabilizes, whether
   its API should be contracted at all remains the author's call; today it is
   explicitly excluded.
 
-### Resolved (author confirmed 2026-11-04)
+### Resolved (author-confirmed)
 
 - **0777 permissions (0004):** confirmed as deliberate convenience for
   single-operator self-hosting, not a placeholder. Costs (multi-user or
@@ -63,8 +59,7 @@ Record the gaps as-is.
 - Until the download/verify flow exists, this service does not "deploy"
   anything by itself; it prepares directories and first-run configs. All
   external descriptions should keep saying so.
-- This entry must be updated when gaps close; entries describing closed gaps
-  should be superseded, not silently edited.
+- This entry must be updated when gaps close.
 
 ## Evidence
 
@@ -72,4 +67,3 @@ Record the gaps as-is.
 - `internal/server/router.go::NewRouter` — full route table (no auth middleware).
 - `internal/server/handlers.go::selectProjectArtifact` — first-artifact default.
 - `internal/server/bootstrap_specs.go::bootstrapSpecs` — three specs only.
-- `git log` — last commit `55962a3` (2026-11-03).
