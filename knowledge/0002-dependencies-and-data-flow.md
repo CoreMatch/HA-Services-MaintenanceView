@@ -4,15 +4,10 @@
 
 Accepted (records current state)
 
-## Date
-
-2026-11-04
-
 ## Context
 
-The service is a thin host around data owned by HA-Services-Deployer. It was
-wired against the deployer's `/api/v1/*` surface from the first functional
-commits (`f3bee6a`, `88534c6`).
+The service is a thin host around data owned by HA-Services-Deployer. It
+consumes the deployer's `/api/v1/*` surface.
 
 ## Decision
 

@@ -4,16 +4,10 @@
 
 Accepted (records current state; explicitly a snapshot of an unfinished project)
 
-## Date
-
-2026-11-04
-
 ## Context
 
 HA-Services-MaintenanceView is described by its README as "the service-side
-WebUI host for HA deployment management" (`README.md:L3`). All core code
-landied within one day (2026-10-17, commits `3b878af`, `f3bee6a`, `88534c6`,
-`bf28b0d`); the Docker build followed on 2026-11-03 (`55962a3`). HA-Contract
+WebUI host for HA deployment management" (`README.md:L3`). HA-Contract
 explicitly excludes this project from the version-manifest contract and calls
 it work-in-progress. This entry inventories what exists and what does not,
 without dressing it up.
@@ -41,7 +35,7 @@ Record the honest inventory at HEAD.
   editing deploy dir/port, and triggering precheck/initialize
   (`frontend/src/App.tsx::App`).
 - Multi-stage Docker image building the frontend and the Go server
-  (`Dockerfile`, commit `55962a3`).
+  (`Dockerfile`).
 
 ### What does not exist (placeholders / missing)
 
@@ -59,9 +53,10 @@ Record the honest inventory at HEAD.
   `frontend/src/App.tsx::initializeProject`, `frontend/src/App.tsx:L329`;
   `internal/server/handlers.go::selectProjectArtifact` defaults to the first
   artifact when no id is given).
-- **README is stale.** `README.md:L39-L45 @ 55962a3` lists five endpoints;
-  the router has eight routes including `/api/projects`, deployment PUT,
-  precheck and initialize POSTs (`internal/server/router.go::NewRouter`).
+- **README endpoint list is incomplete.** The API skeleton
+  (`README.md:L41-L50`) lists eight of the nine routes and omits
+  `PUT /api/projects/:name/deployment`
+  (`internal/server/router.go::NewRouter`).
 - Bootstrap coverage: 3 of the platform's services (see 0003); everything
   else gets "initialization is not supported for this project yet"
   (`internal/server/handlers.go::InitializeProject`).
@@ -76,7 +71,6 @@ Record the honest inventory at HEAD.
 
 ## Evidence
 
-- Commits: `3b878af` (initial app), `f3bee6a` (deployment management), `88534c6` (initialization workflow), `bf28b0d` (config versioning), `55962a3` (Docker) — all 2026-10-17 except the last (2026-11-03).
 - `internal/server/router.go::NewRouter`, `internal/server/handlers.go`, `frontend/src/App.tsx` as cited above.
 - Contract exclusion: HA-Contract
   `/home/lnb/Desktop/HA/HA-Contract/docs/dev/HA-Services-Deployer/version-manifest.md::Purpose`

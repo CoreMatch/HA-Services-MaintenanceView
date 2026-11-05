@@ -2,18 +2,14 @@
 
 ## Status
 
-Accepted — the 0777 permission behavior is **confirmed by the author
-(2026-11-04) as deliberate convenience for single-operator self-hosting**,
+Accepted — the 0777 permission behavior is **confirmed by the author as
+deliberate convenience for single-operator self-hosting**,
 not an oversight. Its costs are recorded below.
-
-## Date
-
-2026-11-04
 
 ## Context
 
-The "precheck" endpoint (`POST /api/projects/:name/precheck`, added in commit
-`f3bee6a`) is the only filesystem-preparation step before initialization. Its
+The "precheck" endpoint (`POST /api/projects/:name/precheck`) is the only
+filesystem-preparation step before initialization. Its
 name suggests broader checks; the implementation is narrow.
 
 ## Decision
@@ -38,7 +34,7 @@ check the running platform, or validate the artifact against the manifest.
 
 - **World-writable permissions (0777)** on the deploy directory and the
   service binary are the intended outcome of this flow. The author confirmed
-  on 2026-11-04 that this is a **deliberate convenience for single-operator
+  that this is a **deliberate convenience for single-operator
   self-hosting**, not an oversight. It removes all permission friction for
   the one operator who both runs this service and manages the target
   binaries by hand.
@@ -67,4 +63,3 @@ check the running platform, or validate the artifact against the manifest.
 - `internal/models/project.go::UpdatePrecheckResult` — result shape.
 - `frontend/src/App.tsx::runPrecheck`,
   `frontend/src/App.tsx::directory_mode_before` — UI trigger and rendering.
-- Commit: `f3bee6a` (project deployment management and API).
