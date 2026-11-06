@@ -73,5 +73,5 @@ Record the honest inventory at HEAD.
 
 - `internal/server/router.go::NewRouter`, `internal/server/handlers.go`, `frontend/src/App.tsx` as cited above.
 - Contract exclusion: HA-Contract
-  `/home/lnb/Desktop/HA/HA-Contract/docs/dev/HA-Services-Deployer/version-manifest.md::Purpose`
+  `/home/lnb/Desktop/HA/HA-Services-Deployer/knowledge/0006-version-manifest.md::Purpose`
   ("work-in-progress project and is not covered by this contract").

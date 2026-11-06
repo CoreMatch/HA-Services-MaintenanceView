@@ -10,7 +10,7 @@ self-hosting and maintenance of this service.
   "HA-Services-MaintenanceView exists in the ecosystem but is a
   work-in-progress project and is not covered by this contract"
   (HA-Contract
-  `/home/lnb/Desktop/HA/HA-Contract/docs/dev/HA-Services-Deployer/version-manifest.md::Purpose`).
+  `/home/lnb/Desktop/HA/HA-Services-Deployer/knowledge/0006-version-manifest.md::Purpose`).
   Accordingly, these entries record **internal current state and direction
   only**, and must not be read as descriptions of achieved, guaranteed
   functionality.
