@@ -26,6 +26,20 @@ facts:
       timeout_seconds: 5
       interval_seconds: 30
       retries: 3
+  smoke:
+    # 部署后冒烟：会话状态端点（前端判断登录态的入口；注册在鉴权中间件
+    # 之前，无需会话，确定性 200；internal/server/auth.go SessionStatus）。
+    # 更深的端点（/api/projects 等）在启用鉴权后要求会话 Cookie——会话 ID
+    # 进程内随机签发、12h 滑动过期，静态冒烟无法持有，故不越鉴权探测；
+    # 项目列表链路改由 deployer 依赖可达性在 preflight 兜底。
+    - name: session-status
+      method: GET
+      path: /api/session
+      expect_status: 200
+      timeout_seconds: 10
+      assert:
+        json_field: data.auth_required
+        contains: session status
   depends_on:
     # deployer.base_url 代理 Deployer 只读面；
     # compose depends_on ha-services-deployer: service_healthy。
