@@ -7,7 +7,7 @@ Accepted (records current state; explicitly a snapshot of an unfinished project)
 ## Context
 
 HA-Services-MaintenanceView is described by its README as "the service-side
-WebUI host for HA deployment management" (`README.md:L3`). HA-Contract
+WebUI host for HA deployment management" (`README.md:L3-L3 ~ `HA-Services-MaintenanceView` is the service-sid`). HA-Contract
 explicitly excludes this project from the version-manifest contract and calls
 it work-in-progress. This entry inventories what exists and what does not,
 without dressing it up.
@@ -50,11 +50,11 @@ Record the honest inventory at HEAD.
   (`internal/server/router.go::NewRouter`).
 - **Only the first artifact is ever used** — UI and handlers take
   `artifacts[0]` (`frontend/src/App.tsx::runPrecheck`,
-  `frontend/src/App.tsx::initializeProject`, `frontend/src/App.tsx:L329`;
+  `frontend/src/App.tsx::initializeProject`, `frontend/src/App.tsx:L329-L329 ~ const artifact = project.artifacts[0];`;
   `internal/server/handlers.go::selectProjectArtifact` defaults to the first
   artifact when no id is given).
 - **README endpoint list is incomplete.** The API skeleton
-  (`README.md:L41-L50`) lists eight of the nine routes and omits
+  (`README.md:L41-L50 ~ Then open `http://127.0.0.1:2771` — the port fol`) lists eight of the nine routes and omits
   `PUT /api/projects/:name/deployment`
   (`internal/server/router.go::NewRouter`).
 - Bootstrap coverage: 3 of the platform's services (see 0003); everything

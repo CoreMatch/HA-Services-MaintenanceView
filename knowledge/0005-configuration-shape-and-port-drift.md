@@ -32,7 +32,7 @@ Record the verified shape and the drift:
   code default listen port/public URL is `:2771`
   (`internal/models/config.go::DefaultConfig`, matched by
   `config.example.yaml`). The README quick-start points at `:2771` and
-  notes that container deployments use `:18081` (`README.md:L37-L39`).
+  notes that container deployments use `:18081` (`README.md:L37-L39 ~ cd frontend`).
   Container deployments indeed use `:18081`:
   - the Docker image `EXPOSE 18081` (`Dockerfile:L31`);
   - the platform compose maps `${MAINTENANCEVIEW_PORT:-18081}` and renders a
@@ -51,7 +51,7 @@ Record the verified shape and the drift:
 
 - Operators running `go run .` without a config file get port 2771; the
   README documents `:2771` for the bare local run and `:18081` for
-  container deployments (`README.md:L37-L39`). Composed deployments use
+  container deployments (`README.md:L37-L39 ~ cd frontend`). Composed deployments use
   18081 (template sets it).
 - `public_base_url` is currently returned by `GET /api/config` but no
   verified code path consumes it for redirects or URL building (frontend
@@ -69,7 +69,7 @@ Record the verified shape and the drift:
   `internal/config/migrations.go::MigrateConfig`,
   `internal/config/migrations.go::BackupConfigFile`.
 - `config.yaml.bak.0`, `config.yaml.bak.1` — tracked migration backups.
-- `README.md:L37-L39`; `Dockerfile:L31`; HA-Services-Deployer
+- `README.md:L37-L39 ~ cd frontend`; `Dockerfile:L31`; HA-Services-Deployer
   `/home/lnb/Desktop/HA/HA-Services-Deployer/deploy/config/ha-services-maintenance-view.yaml.tmpl (field: listen)`
   (`listen: ":18081"`).
 - `config.example.yaml` — matches code defaults (`:2771`).
