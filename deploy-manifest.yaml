@@ -1,0 +1,62 @@
+# HA-Services-MaintenanceView 部署声明（deploy-manifest v1）
+# schema 依据：HA-Services-Deployer internal/manifest/（SchemaVersion=1）
+manifest_version: 1
+kind: service
+project: ha-services-maintenance-view
+display_name: HA-Services-MaintenanceView
+group: ops
+# 未知：仓库无版本 tag，代码与配置均无服务版本字段。
+service_version: "unknown"
+
+facts:
+  ports:
+    # 生产裸金属端口为 2771：代码默认 :2771（internal/models/config.go
+    # DefaultConfig，config.example.yaml 同值），生产实测 :2771 /healthz 200
+    # （PROD-UPGRADE-EXECUTED-20261106 §7/§10-3）。
+    # 漂移记录：容器模板用 :18081（本仓 knowledge 0005 已记录该端口分裂）。
+    - name: http
+      port: 2771
+      exposure: loopback
+  health:
+    # internal/server/router.go router.GET("/healthz")；compose healthcheck 同路径
+    http:
+      port_name: http
+      path: /healthz
+      expect_status: 200
+      timeout_seconds: 5
+      interval_seconds: 30
+      retries: 3
+  depends_on:
+    # deployer.base_url 代理 Deployer 只读面；
+    # compose depends_on ha-services-deployer: service_healthy。
+    # 无数据库、无 redis（模板无对应段，状态落 data/projects.json）。
+    - project: ha-services-deployer
+      kind: required
+  migration:
+    # 无数据库，无迁移机制。
+    mode: none
+  data_dirs:
+    # 模板 state.projects_path: ./data/projects.json
+    - ./data
+  config:
+    # main.go config.Load("config.yaml")。
+    # 模板版本 = 模板首行 version: "1"（代码 ConfigVersion 同为 "1"）。
+    - path: config.yaml
+      template_version: "1"
+  # 模板 server.frontend_dist: ./frontend/dist（SPA 托管；
+  # 生产在位 /www/wwwroot/hasmv/frontend/，见 PROD-FILEREFRESH §1）。
+  static_assets: ./frontend/dist
+
+baremetal:
+  process:
+    manager: aapanel
+  install:
+    # PROD-FILEREFRESH-20261107 §1：二进制在位路径 /www/wwwroot/hasmv/hasmv
+    root: /www/wwwroot/hasmv
+    binary_name: hasmv
+  artifact:
+    source: local_path
+    local_path: /home/lnb/Desktop/HA/HA-Services-MaintenanceView/build/hasmv
+
+container:
+  enabled: false
