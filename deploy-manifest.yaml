@@ -32,14 +32,19 @@ facts:
     # 更深的端点（/api/projects 等）在启用鉴权后要求会话 Cookie——会话 ID
     # 进程内随机签发、12h 滑动过期，静态冒烟无法持有，故不越鉴权探测；
     # 项目列表链路改由 deployer 依赖可达性在 preflight 兜底。
+    #
+    # 断言必须能识破 SPA 静态回退：本服务对未知路径一律回 200 + index.html
+    #（server.frontend_dist 托管），旧二进制没有该端点时状态码是回退伪造的。
+    # expect_content_type 是第一道闸（回退是 text/html，真实端点是
+    # application/json），json_field 再钉住响应契约；两者缺一不可。
     - name: session-status
       method: GET
       path: /api/session
       expect_status: 200
       timeout_seconds: 10
       assert:
+        expect_content_type: application/json
         json_field: data.auth_required
-        contains: session status
   depends_on:
     # deployer.base_url 代理 Deployer 只读面；
     # compose depends_on ha-services-deployer: service_healthy。
