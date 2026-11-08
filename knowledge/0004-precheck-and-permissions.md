@@ -44,8 +44,9 @@ check the running platform, or validate the artifact against the manifest.
     binary between precheck and start, i.e. a local privilege-escalation /
     tampering path); or
   - the deploy directory or this service is **exposed to an untrusted
-    network** (the unauthenticated precheck endpoint, see 0001/0006, lets
-    anyone reachable chmod/create directories).
+    network** (the precheck endpoint lets anyone with a panel session
+    chmod/create directories; when `deployer.token` is unset the panel is
+    login-free, see 0001/0006).
   In either of those environments the permission model would need to be
   tightened; nothing in this entry is an endorsement of 0777 beyond the
   stated single-operator case.
@@ -53,7 +54,7 @@ check the running platform, or validate the artifact against the manifest.
   depends on the operator downloading the binary manually from the link the
   UI shows (see 0001).
 - The precheck result is displayed verbatim in the UI
-  (`frontend/src/App.tsx::directory_mode_before`).
+  (`frontend/src/BootstrapView.tsx::directory_mode_before`).
 
 ## Evidence
 
@@ -61,5 +62,6 @@ check the running platform, or validate the artifact against the manifest.
 - `internal/server/handlers.go::runPrecheck` — implementation (mode `0o777`
   passed to `os.MkdirAll` and to both `os.Chmod` calls).
 - `internal/models/project.go::UpdatePrecheckResult` — result shape.
-- `frontend/src/App.tsx::runPrecheck`,
-  `frontend/src/App.tsx::directory_mode_before` — UI trigger and rendering.
+- `frontend/src/BootstrapView.tsx::runPrecheck`,
+  `frontend/src/BootstrapView.tsx::directory_mode_before` — UI trigger and
+  rendering (legacy bootstrap page).

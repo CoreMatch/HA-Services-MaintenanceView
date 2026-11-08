@@ -31,32 +31,42 @@ Record the honest inventory at HEAD.
 - A "precheck" that prepares directories/permissions (see 0004).
 - A config bootstrap ("initialization") for exactly three services (see
   0003).
-- Frontend: one hand-styled React page (no router library) listing projects,
-  editing deploy dir/port, and triggering precheck/initialize
-  (`frontend/src/App.tsx::App`).
+- Frontend: a tabbed single-page app (no router library). The shell with
+  session gate and tab navigation (`frontend/src/App.tsx::App`) hosts the
+  orchestration operations view (Deployer proxy: status/validation/runs/
+  deploy/rollback, `frontend/src/OrchestrationView.tsx::OrchestrationView`)
+  and the legacy bootstrap page listing projects, editing deploy dir/port,
+  and triggering precheck/initialize
+  (`frontend/src/BootstrapView.tsx::BootstrapView`).
 - Multi-stage Docker image building the frontend and the Go server
   (`Dockerfile`).
 
 ### What does not exist (placeholders / missing)
 
-- **No artifact download, install, or update flow.** The UI only renders a
-  plain download link to the deployer artifact
-  (`frontend/src/App.tsx::download_url`); nothing in the backend fetches,
-  replaces, or installs binaries.
-- **No sha256 verification anywhere.** Digests are displayed
-  (`frontend/src/App.tsx::sha256`) but never computed or compared.
-- **No process management** — no start/stop/restart of services.
-- **No authentication** on any endpoint
-  (`internal/server/router.go::NewRouter`).
+- **No artifact download, install, or update flow of its own.** The legacy
+  bootstrap page only renders a plain download link to the deployer artifact
+  (`frontend/src/BootstrapView.tsx::download_url`); nothing in this backend
+  fetches, replaces, or installs binaries. Binary lifecycle is proxied to
+  HA-Services-Deployer's orchestration endpoints instead
+  (`internal/server/handlers_orchestration.go::TriggerDeploy`).
+- **No sha256 verification anywhere in this service.** Digests are displayed
+  (`frontend/src/BootstrapView.tsx::sha256`) but never computed or compared.
+- **No direct process management** — lifecycle actions are proxied to the
+  Deployer orchestrator, which drives Tinyvisor
+  (`internal/server/handlers_orchestration.go::TriggerRollback`); this
+  service never calls Tinyvisor itself.
+- **Authentication** is a single-credential session model: panel login is
+  verified against `deployer.token` (the existing ops identity), the proxy
+  injects the token into outbound Deployer mutation requests, and
+  `GET /api/config` is redacted (`internal/server/auth.go::authMiddleware`,
+  `internal/server/handlers.go::GetConfig`). With `deployer.token` empty the
+  legacy login-free behavior is kept and mutation proxying fails closed.
 - **Only the first artifact is ever used** — UI and handlers take
-  `artifacts[0]` (`frontend/src/App.tsx::runPrecheck`,
-  `frontend/src/App.tsx::initializeProject`, `frontend/src/App.tsx:L329-L329 fp=4e3a5f44 ~ const artifact = project.artifacts[0];`;
+  `artifacts[0]` (`frontend/src/BootstrapView.tsx::runPrecheck`,
+  `frontend/src/BootstrapView.tsx::initializeProject`,
+  `frontend/src/BootstrapView.tsx:L313 fp=2dc20ab5`;
   `internal/server/handlers.go::selectProjectArtifact` defaults to the first
   artifact when no id is given).
-- **README endpoint list is incomplete.** The API skeleton
-  (`README.md:L41-L50 fp=ae2dc828 ~ Then open `http://127.0.0.1:2771` — the port fol`) lists eight of the nine routes and omits
-  `PUT /api/projects/:name/deployment`
-  (`internal/server/router.go::NewRouter`).
 - Bootstrap coverage: 3 of the platform's services (see 0003); everything
   else gets "initialization is not supported for this project yet"
   (`internal/server/handlers.go::InitializeProject`).
@@ -71,7 +81,10 @@ Record the honest inventory at HEAD.
 
 ## Evidence
 
-- `internal/server/router.go::NewRouter`, `internal/server/handlers.go`, `frontend/src/App.tsx` as cited above.
+- `internal/server/router.go::NewRouter`, `internal/server/handlers.go`,
+  `internal/server/handlers_orchestration.go`, `internal/server/auth.go`,
+  `frontend/src/App.tsx`, `frontend/src/OrchestrationView.tsx`,
+  `frontend/src/BootstrapView.tsx` as cited above.
 - Contract exclusion: HA-Contract
   `/home/lnb/Desktop/HA/HA-Services-Deployer/knowledge/0006-version-manifest.md::Purpose`
   ("work-in-progress project and is not covered by this contract").

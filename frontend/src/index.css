@@ -1,0 +1,18 @@
+@import 'tailwindcss';
+@import '@ha/ui/tokens.css';
+
+/* Let Tailwind scan @ha/ui component sources so any utility used there is
+ * generated for this app too (consumer wiring per @ha/ui README). */
+@source "../node_modules/@ha/ui/src";
+
+html,
+body,
+#root {
+  min-height: 100vh;
+}
+
+body {
+  background: var(--ha-base);
+  color: var(--ha-ink);
+  font-family: 'Inter', ui-sans-serif, system-ui, sans-serif;
+}

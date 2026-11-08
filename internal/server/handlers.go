@@ -17,16 +17,20 @@ import (
 )
 
 type Handler struct {
-	cfg    *models.Config
-	client *deployer.Client
-	store  *state.Store
+	cfg        *models.Config
+	client     *deployer.Client
+	store      *state.Store
+	sessions   *SessionStore
+	requestLog *RequestLog
 }
 
-func NewHandler(cfg *models.Config, client *deployer.Client, store *state.Store) *Handler {
+func NewHandler(cfg *models.Config, client *deployer.Client, store *state.Store, sessions *SessionStore, requestLog *RequestLog) *Handler {
 	return &Handler{
-		cfg:    cfg,
-		client: client,
-		store:  store,
+		cfg:        cfg,
+		client:     client,
+		store:      store,
+		sessions:   sessions,
+		requestLog: requestLog,
 	}
 }
 
@@ -41,11 +45,27 @@ func (h *Handler) Healthz(c *gin.Context) {
 	})
 }
 
+// GetConfig 返回脱敏后的配置视图。
+// 部署凭据（deployer.token）只允许留在服务端，这里仅回显布尔状态，
+// 绝不回显明文。面板登录复用同一凭据，因此 auth.enabled 与
+// token_configured 同源。
 func (h *Handler) GetConfig(c *gin.Context) {
+	tokenConfigured := h.cfg.Deployer.Token != ""
 	c.JSON(http.StatusOK, gin.H{
 		"success": true,
 		"message": "config loaded",
-		"data":    h.cfg,
+		"data": gin.H{
+			"version": h.cfg.Version,
+			"server":  h.cfg.Server,
+			"deployer": gin.H{
+				"base_url":         h.cfg.Deployer.BaseURL,
+				"token_configured": tokenConfigured,
+			},
+			"state": h.cfg.State,
+			"auth": gin.H{
+				"enabled": tokenConfigured,
+			},
+		},
 	})
 }
 

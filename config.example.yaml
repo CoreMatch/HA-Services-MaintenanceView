@@ -6,6 +6,11 @@ server:
 
 deployer:
   base_url: "http://127.0.0.1:18080"
+  # Deployer 变更端点（部署/回滚）的部署凭据，即既有的运维身份：
+  #   - 服务端代理变更请求时自带该凭据转发，浏览器永远拿不到；
+  #   - 面板登录会话复用它做验证（不为面板另起账号体系）。
+  # 留空时保持免登录，触发部署/回滚会返回 503。
+  token: ""
 
 state:
   projects_path: "./data/projects.json"

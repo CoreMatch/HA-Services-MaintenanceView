@@ -36,7 +36,7 @@ Record the verified dependency and data-flow shape:
   (default `./frontend/dist`, `internal/models/config.go::DefaultConfig`).
   `frontend/dist` is git-ignored and **not committed**; a local `npm install
   && npm run build` (React 19 + Vite 7, `frontend/package.json`) or the
-  Docker multi-stage build (`Dockerfile:L5-L10 fp=6590d3d8`) must produce it. Without it
+  Docker multi-stage build (`Dockerfile:L5-L19 fp=40fd5a7b`) must produce it. Without it
   the server still runs but answers 503 with a build hint for non-API routes
   (`internal/server/router.go::NewRouter`).
 - **No database, no Redis, no auth provider** — the only runtime dependency
@@ -45,7 +45,7 @@ Record the verified dependency and data-flow shape:
 ## Consequences
 
 - Starting the deployer first is a real prerequisite (README quick start
-  says so, `README.md:L14 fp=00363a6e`); without it the project list is unavailable.
+  says so, `README.md:L14 fp=01ba4719`); without it the project list is unavailable.
 - Losing `data/projects.json` loses all saved deploy dirs/ports; there is no
   backup mechanism.
 - Download URLs shown in the UI are built by joining `deployer.base_url`
@@ -68,4 +68,4 @@ Record the verified dependency and data-flow shape:
 - `internal/models/config.go::DefaultConfig` — defaults.
 - `internal/server/router.go::NewRouter` — SPA fallback and 503 hint.
 - `frontend/package.json` — React 19 / Vite 7 / `tsc && vite build`.
-- `Dockerfile:L5-L10 fp=6590d3d8`, `Dockerfile:L27-L28 fp=ef2e13fc` — frontend build stage and copy.
+- `Dockerfile:L5-L19 fp=40fd5a7b`, `Dockerfile:L36-L37 fp=ef2e13fc` — frontend build stage and copy.
