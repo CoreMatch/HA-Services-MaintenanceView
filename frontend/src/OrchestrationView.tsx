@@ -67,6 +67,7 @@ function outcomeTone(outcome: string): BadgeTone {
     case "foreign":
     case "skipped":
       return "warn";
+    case "plugin":
     default:
       return "neutral";
   }
@@ -81,6 +82,7 @@ const OUTCOME_LABELS: Record<string, string> = {
   failed: "失败",
   skipped: "跳过",
   foreign: "非管辖(只读)",
+  plugin: "插件(只登记)",
   "dry-run": "演练",
 };
 
