@@ -21,7 +21,7 @@ type DeployManifests struct {
 
 type DeployManifestEntry struct {
 	Project        string `json:"project"`
-	Kind           string `json:"kind"` // service | external
+	Kind           string `json:"kind"` // service | external | plugin
 	DisplayName    string `json:"display_name"`
 	Group          string `json:"group"`
 	ServiceVersion string `json:"service_version"`

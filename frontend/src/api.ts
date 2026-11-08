@@ -9,11 +9,11 @@ export type SessionStatus = {
 
 export type DeployManifestEntry = {
   project: string;
-  kind: string; // service | external
+  kind: string; // service | external | plugin
   display_name: string;
   group: string;
   service_version: string;
-  manager: string; // tinyvisor | aapanel | manual | ""(external)
+  manager: string; // tinyvisor | aapanel | manual | plugin | ""(external)
   source_path: string;
 };
 
@@ -68,7 +68,7 @@ export type RunStep = {
 };
 
 // outcome 取值：pending | up-to-date | deployed | rolled-back | reachable |
-// failed | skipped | foreign | dry-run
+// failed | skipped | foreign | plugin | dry-run
 export type RunProjectResult = {
   project: string;
   outcome: string;
@@ -264,6 +264,7 @@ export function isDeployable(entry: { kind?: string; manager?: string }): boolea
 
 export function managerLabel(manager: string, kind?: string): string {
   if (kind === "external" || manager === "") return "外部依赖";
+  if (kind === "plugin" || manager === "plugin") return "插件产物(只登记)";
   if (manager === "tinyvisor") return "Tinyvisor 管理";
   if (manager === "aapanel") return "宝塔面板管理";
   if (manager === "manual") return "人工管理";
