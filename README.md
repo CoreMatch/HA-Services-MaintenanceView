@@ -62,6 +62,12 @@ treats it as read-only):
   It stays server-side: the proxy injects it into outbound mutation requests,
   and the same value verifies panel logins. When empty, the panel keeps the
   legacy login-free behavior and deploy/rollback triggers fail closed (503).
+- Single-credential model: there is no separate panel account system — the
+  login password **is** the deployer token (`internal/server/auth.go::authEnabled`
+  decides `auth_required`).
+- Login-free mode is announced, not silent: the header shows a `免登录模式`
+  warning badge and a banner stating read-only views work while
+  deploy/rollback will be rejected 503 (`frontend/src/App.tsx::App`).
 - No endpoint ever returns token material; `GET /api/config` is redacted.
 
 ## API skeleton
@@ -89,6 +95,21 @@ Routes registered after the session middleware require a valid session when
 `deployer.token` is configured. The orchestration shapes proxied here follow
 the Deployer's orchestration contract; when `deployer.token` is unset the
 mutation routes answer 503.
+
+## Orchestration area availability
+
+What the orchestration area shows is decided by the projects'
+`deploy-manifest.yaml` declarations, aggregated from the Deployer
+(`GET /api/orchestration/manifest` → Deployer `/api/v1/deploy/manifests`):
+
+- The project list is exactly the aggregated manifests; manifest load errors
+  are surfaced verbatim as a warning banner (not hidden).
+- A project counts as deployable purely by its manifest declaration:
+  `manager: tinyvisor` and `kind` not `external`
+  (`frontend/src/api.ts::isDeployable`). Panel-managed (`aapanel`),
+  `manual`, and `external` entries stay visible as read-only facts.
+- No manifest declarations → empty orchestration area; nothing is invented
+  client-side.
 
 ## Local alignment environment (real Deployer, from scratch)
 
