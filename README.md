@@ -212,8 +212,11 @@ Do not trust the panel on faith — cross-check counts against the source:
   on disk. Triggering one dry-run deploy from the UI must raise all three by
   one.
 - **Projects:** 项目总数 in the stats row must equal `data.count` from
-  `/api/orchestration/manifest` and the number of `deploy-manifest.yaml`
-  files discoverable under the scan roots.
+  `/api/orchestration/manifest` — which is the number of manifest files
+  under the scan roots and `external_manifests` **after** duplicate-project
+  resolution (parallel worktree copies are dropped deterministically and
+  surface as the duplicate warning in the validation panel; on this
+  machine: 14 files → 13 projects).
 - **Liveness:** the Tinyvisor stat must read 可达; a dry-run triggered from
   the UI must finish with per-step `dry-run:` plan lines in the run detail —
   a stub could not produce real step records backed by files on disk.
