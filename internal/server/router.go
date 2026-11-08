@@ -12,15 +12,25 @@ import (
 	"github.com/gin-gonic/gin"
 )
 
-func NewRouter(cfg *models.Config, client *deployer.Client, store *state.Store) *gin.Engine {
+func NewRouter(cfg *models.Config, client *deployer.Client, store *state.Store, sessions *SessionStore, requestLog *RequestLog) *gin.Engine {
 	router := gin.Default()
-	handler := NewHandler(cfg, client, store)
+	handler := NewHandler(cfg, client, store, sessions, requestLog)
 
 	router.GET("/healthz", handler.Healthz)
 
 	api := router.Group("/api")
 	{
+		// 会话端点必须在鉴权中间件之前注册：
+		// 登录本身不能要求已有会话，/api/session 供前端判断是否需要登录。
 		api.GET("/healthz", handler.Healthz)
+		api.GET("/session", handler.SessionStatus)
+		api.POST("/session/login", handler.SessionLogin)
+		api.POST("/session/logout", handler.SessionLogout)
+
+		// 其后注册的路由全部受会话门保护（auth.operator_token 为空时放行，
+		// 保持历史行为）。
+		api.Use(handler.authMiddleware())
+
 		api.GET("/config", handler.GetConfig)
 		api.GET("/projects", handler.GetProjects)
 		api.PUT("/projects/:name/deployment", handler.SaveProjectDeployment)
@@ -28,6 +38,18 @@ func NewRouter(cfg *models.Config, client *deployer.Client, store *state.Store) 
 		api.POST("/projects/:name/initialize", handler.InitializeProject)
 		api.GET("/deployer/healthz", handler.GetDeployerHealthz)
 		api.GET("/deployer/manifest", handler.GetDeployerManifest)
+		api.GET("/request-log", handler.GetRequestLog)
+
+		orchestration := api.Group("/orchestration")
+		{
+			orchestration.GET("/manifest", handler.GetOrchestrationManifest)
+			orchestration.GET("/validation", handler.GetOrchestrationValidation)
+			orchestration.GET("/status", handler.GetOrchestrationStatus)
+			orchestration.GET("/runs", handler.GetOrchestrationRuns)
+			orchestration.GET("/runs/:id", handler.GetOrchestrationRun)
+			orchestration.POST("/deploy", handler.TriggerDeploy)
+			orchestration.POST("/rollback", handler.TriggerRollback)
+		}
 	}
 
 	router.NoRoute(func(c *gin.Context) {

@@ -10,11 +10,21 @@
     "strict": true,
     "forceConsistentCasingInFileNames": true,
     "module": "ESNext",
-    "moduleResolution": "Node",
+    "moduleResolution": "bundler",
     "resolveJsonModule": true,
     "isolatedModules": true,
     "noEmit": true,
-    "jsx": "react-jsx"
+    "jsx": "react-jsx",
+    "paths": {
+      /* @ha/ui 以 TS 源码经 file: 链接消费，且自带 node_modules（radix 等）；
+         react/react-dom/lucide-react 钉到本工程的副本，保持单一类型身份
+         （与 vite alias 一致，接线方式对齐 MatchCoreArena-Client）。 */
+      "react": ["./node_modules/@types/react"],
+      "react/*": ["./node_modules/@types/react/*"],
+      "react-dom": ["./node_modules/@types/react-dom"],
+      "react-dom/*": ["./node_modules/@types/react-dom/*"],
+      "lucide-react": ["./node_modules/lucide-react"]
+    }
   },
   "include": ["src"],
   "references": [

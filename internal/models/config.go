@@ -13,8 +13,16 @@ type ServerConfig struct {
 	FrontendDist  string `yaml:"frontend_dist" json:"frontend_dist"`
 }
 
+// DeployerConfig 描述上游 Deployer 的连接方式。
+// Token 是 Deployer 变更端点（部署/回滚）的部署凭据，即既有的运维身份：
+//   - 服务端代理变更请求时注入 X-Deploy-Token 请求头转发，绝不下发到浏览器；
+//   - 面板登录会话复用它做验证（作者决策：不为面板另起账号体系）；
+//   - json 标签为 "-"，保证任何 JSON 序列化（含 /api/config）都不回显。
+//
+// 留空时保持历史行为：免登录、变更代理 fail-closed（503）。
 type DeployerConfig struct {
 	BaseURL string `yaml:"base_url" json:"base_url"`
+	Token   string `yaml:"token" json:"-"`
 }
 
 type StateConfig struct {

@@ -3,6 +3,15 @@ ARG GO_VERSION=1.25.0
 ARG NODE_VERSION=22-alpine
 
 FROM node:${NODE_VERSION} AS frontend
+WORKDIR /src
+# @ha/ui is consumed as source through a repo-relative file: link
+# (frontend/package.json -> file:../ha-ui); the submodule must be present
+# before npm ci resolves the link. It brings its own node_modules (radix
+# primitives) — module resolution from ha-ui source files walks upward
+# from the submodule, not into /src/frontend/node_modules. react/react-dom
+# stay pinned to the frontend copies via vite alias + tsconfig paths.
+COPY ha-ui ./ha-ui
+RUN cd /src/ha-ui && npm ci --omit=dev
 WORKDIR /src/frontend
 COPY frontend/package.json frontend/package-lock.json ./
 RUN npm ci

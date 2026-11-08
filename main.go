@@ -15,9 +15,16 @@ func main() {
 		log.Fatalf("load config: %v", err)
 	}
 
+	requestLog := server.NewRequestLog()
+
 	client := deployer.NewClient(cfg.Deployer.BaseURL)
+	// 部署凭据只存在于服务端：注入出站请求头，绝不出现在日志或响应中。
+	client.SetToken(cfg.Deployer.Token)
+	client.SetRecorder(requestLog)
+
 	store := state.NewStore(cfg.State.ProjectsPath)
-	router := server.NewRouter(cfg, client, store)
+	sessions := server.NewSessionStore()
+	router := server.NewRouter(cfg, client, store, sessions, requestLog)
 
 	log.Printf("HA Services Maintenance View listening on %s", cfg.Server.Listen)
 	if err := router.Run(cfg.Server.Listen); err != nil {
