@@ -11,7 +11,7 @@ and live in THIS panel (the Deployer's operation surface), with the Deployer
 auto-launching the panel so operators never deploy it separately. This entry
 records the MV side of that work; the engine semantics are normative in
 HA-Services-Deployer
-`knowledge/0016-first-run-bootstrap-mv-autostart-shared-infra.md`.
+`knowledge/0016-first-run-bootstrap-mv-autostart-infra.md`.
 
 ## Decision
 
@@ -65,11 +65,13 @@ unchanged.
   Deployer (managed child, pid reported at `/api/v1/deploy/maintenance-view`),
   no login screen on loopback, wizard one-click ran infra → secrets →
   databases → keys → `.env` → renders; composed service stack came up healthy
-  against the shared infra; re-run fully idempotent; mid-run kill resumed.
+  against the ha-infra MySQL/Redis; re-run fully idempotent; mid-run kill resumed.
 - The supervised MV's deploy token comes from the Deployer's credentials
   file (auto-generated there on first start) — operators never type it.
-- Legacy `BootstrapView.tsx` stays in the tree (unreferenced) pending
-  removal; its backend endpoints stay for compatibility this revision.
+- The legacy `BootstrapView.tsx` was removed (2026-11-12) once the wizard
+  replaced it; its backend endpoints stay for compatibility this revision.
+  The old WIP knowledge entries (0001/0004/0006) are archival snapshots with
+  anchors demoted to plain text.
 
 ## Evidence
 
@@ -78,4 +80,4 @@ unchanged.
 - `internal/server/auth.go::loopbackTrusted` — loopback session gate.
 - `internal/models/config.go::ServerConfig.LoopbackSession` — config field.
 - Deployer side: HA-Services-Deployer
-  `knowledge/0016-first-run-bootstrap-mv-autostart-shared-infra.md`.
+  `knowledge/0016-first-run-bootstrap-mv-autostart-infra.md`.

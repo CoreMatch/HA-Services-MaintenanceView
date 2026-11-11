@@ -27,7 +27,7 @@ import {
 // 设计（作者边界）：
 //   - 能自动推导/生成的一律不让用户填——全部密钥、库名、客户端 id、内部
 //     地址都由后端推导；向导只问"域名/对外地址"这类只有人知道的东西；
-//   - MySQL/Redis 是两条部署链路共用的基础设施，缺了就一键拉起，已有就接管；
+//   - MySQL/Redis 基础设施按所选部署路径各自成立：缺了就一键拉起，已有就接管；
 //   - 幂等 + 断点续跑：重跑不覆盖已有值，中途失败可从上次继续；
 //   - 生成值只显示掩码/指纹，绝不回显明文。
 
@@ -134,7 +134,7 @@ function InfraCard({
             {inst.data_volume ? <div>数据卷：{inst.data_volume}（容器删了数据不丢）</div> : null}
           </>
         ) : (
-          <div>尚未可用。点"一键拉起"自动生成凭据、拉起容器并等待真正可用；两条部署链路会共用这一份实例。</div>
+          <div>尚未可用。点"一键拉起"自动生成凭据、拉起容器并等待真正可用；所选部署路径按对应形态连接。</div>
         )}
         {inst.detail ? <div className="text-ink-faint">{inst.detail}</div> : null}
       </Inset>
@@ -157,6 +157,10 @@ export default function WizardView() {
   });
   const [targets, setTargets] = useState({ container: true, baremetal: true });
   const [adminPassword, setAdminPassword] = useState("");
+  // 裸金属渲染输出：根目录 + 逐服务路径（后端按清单预填，可就地改）。
+  const [bmRoot, setBmRoot] = useState("");
+  const [bmOutputs, setBmOutputs] = useState<Record<string, string>>({});
+  const [bmConfigFiles, setBmConfigFiles] = useState<Record<string, string>>({});
   const [launchingMysql, setLaunchingMysql] = useState(false);
   const [launchingRedis, setLaunchingRedis] = useState(false);
 
@@ -174,6 +178,17 @@ export default function WizardView() {
       const [st, inf] = await Promise.all([api.bootstrapStatus(), api.bootstrapInfra()]);
       setStatus(st);
       setInfra(inf);
+      const files = st.defaults?.config_files ?? {};
+      const outputs = st.defaults?.baremetal_outputs ?? {};
+      setBmConfigFiles(files);
+      // 预填：后端按清单推导的输出路径优先；其余服务给空行等人填。
+      setBmOutputs((cur) => {
+        const next = { ...cur };
+        for (const svc of Object.keys(files)) {
+          if (!(svc in next)) next[svc] = outputs[svc] ?? "";
+        }
+        return next;
+      });
     } catch (err) {
       setLoadError(err instanceof Error ? err.message : String(err));
     }
@@ -190,12 +205,32 @@ export default function WizardView() {
   }, []);
 
   function buildInputs() {
+    const outputs: Record<string, string> = {};
+    for (const [svc, path] of Object.entries(bmOutputs)) {
+      if (path.trim()) outputs[svc] = path.trim();
+    }
     return {
       targets: { container: targets.container, baremetal: targets.baremetal },
       infra: { launch: true },
       database: adminPassword.trim() ? { admin_password: adminPassword.trim() } : {},
       public_urls: { ...urls },
+      paths: { baremetal_outputs: outputs },
     };
+  }
+
+  // 用根目录批量填充空的输出路径：<根>/<服务>/<配置文件名>。
+  function fillFromRoot() {
+    const root = bmRoot.trim().replace(/\/+$/, "");
+    if (!root) return;
+    setBmOutputs((cur) => {
+      const next = { ...cur };
+      for (const [svc, file] of Object.entries(bmConfigFiles)) {
+        if (!next[svc]?.trim()) {
+          next[svc] = `${root}/${svc}/${file || "config.yaml"}`;
+        }
+      }
+      return next;
+    });
   }
 
   // 当场拦截：对外地址必填。返回是否通过。
@@ -320,11 +355,11 @@ export default function WizardView() {
         </Banner>
       ) : null}
 
-      {/* 基础设施：两条链路共用 */}
+      {/* 基础设施 */}
       <section>
         <h2 className="mb-2 text-lg font-semibold text-ink">基础设施（MySQL / Redis）</h2>
         <p className="mb-3 text-sm text-ink-muted">
-          这是两条部署链路共用的同一对实例：裸金属进程连宿主地址+端口，容器编排连服务名+容器口。
+          基础设施按所选部署路径各自成立：裸金属编排连宿主地址+端口，容器编排连服务名+容器口。
           已存在就接管复用，不会重复起；缺失时一键拉起并等待真正可用。
         </p>
         {infra ? (
@@ -395,6 +430,46 @@ export default function WizardView() {
           </CollapsibleContent>
         </Collapsible>
       </section>
+
+      {/* 裸金属渲染输出（裸金属目标必给；后端按清单预填，可就地改） */}
+      {targets.baremetal ? (
+        <section>
+          <h2 className="mb-2 text-lg font-semibold text-ink">裸金属配置渲染输出</h2>
+          <p className="mb-3 text-sm text-ink-muted">
+            选中裸金属编排时，deploy/config 模板将渲染到下列路径（已存在的文件绝不覆盖）。
+            清单在场时后端已按"安装根+配置文件名"预填；也可以填一个根目录批量补齐空行。
+          </p>
+          <div className="mb-3 flex flex-wrap items-end gap-3">
+            <div className="min-w-[320px] flex-1">
+              <Field label="输出根目录（批量填充用，例如 /www/wwwroot）">
+                <Input
+                  value={bmRoot}
+                  onChange={(e) => setBmRoot(e.target.value)}
+                  placeholder="/www/wwwroot"
+                />
+              </Field>
+            </div>
+            <Button variant="outline" size="sm" onClick={fillFromRoot} disabled={!bmRoot.trim()}>
+              填充空行
+            </Button>
+          </div>
+          <div className="grid grid-cols-1 gap-3 md:grid-cols-2">
+            {Object.keys(bmConfigFiles)
+              .sort()
+              .map((svc) => (
+                <Field key={svc} label={`${svc}（${bmConfigFiles[svc] || "config.yaml"}）`}>
+                  <Input
+                    value={bmOutputs[svc] ?? ""}
+                    onChange={(e) =>
+                      setBmOutputs((cur) => ({ ...cur, [svc]: e.target.value }))
+                    }
+                    placeholder={`例如 /www/wwwroot/${svc}/${bmConfigFiles[svc] || "config.yaml"}`}
+                  />
+                </Field>
+              ))}
+          </div>
+        </section>
+      ) : null}
 
       {/* 操作 */}
       <section className="flex flex-wrap items-center gap-3">
