@@ -75,7 +75,7 @@ baremetal:
     binary_name: hasmv
   artifact:
     source: local_path
-    local_path: /home/lnb/Desktop/HA/HA-Services-MaintenanceView/build/hasmv
+    local_path: /home/lnb/Desktop/HA/maintanance/HA-Services-MaintenanceView/build/hasmv
 
 container:
   enabled: false

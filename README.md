@@ -172,7 +172,11 @@ orchestration:
   enabled: true
   scan_roots:
     - /home/lnb/Desktop/HA          # scans <root>/<repo>/deploy-manifest.yaml
-  external_manifests: /home/lnb/Desktop/HA/HA-Services-Deployer/deploy/manifests
+    - /home/lnb/Desktop/HA/matchcore
+    - /home/lnb/Desktop/HA/hrpauth
+    - /home/lnb/Desktop/HA/rw
+    - /home/lnb/Desktop/HA/maintanance
+  external_manifests: /home/lnb/Desktop/HA/maintanance/HA-Services-Deployer/deploy/manifests
   state_dir: /tmp/ha-e2e/deployer-run/data/deploy
   probe_host: 127.0.0.1
   tinyvisor:

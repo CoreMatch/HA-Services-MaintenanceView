@@ -86,5 +86,5 @@ Record the honest inventory at HEAD.
   `frontend/src/App.tsx`, `frontend/src/OrchestrationView.tsx`,
   `frontend/src/BootstrapView.tsx` as cited above.
 - Contract exclusion: HA-Contract
-  `/home/lnb/Desktop/HA/HA-Services-Deployer/knowledge/0006-version-manifest.md::Purpose`
+  `/home/lnb/Desktop/HA/maintanance/HA-Services-Deployer/knowledge/0006-version-manifest.md::Purpose`
   ("work-in-progress project and is not covered by this contract").

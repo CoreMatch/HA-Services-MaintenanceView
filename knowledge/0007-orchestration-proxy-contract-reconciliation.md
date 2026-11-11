@@ -6,11 +6,10 @@ Accepted (records current state)
 
 ## Context
 
-The orchestration operations surface was designed against an assumed Deployer
-contract (`/home/lnb/Desktop/HA/MAINTENANCEVIEW-ORCHESTRATION-DESIGN-20261108.md`
-§4, explicitly marked as assumptions pending the Deployer-side knowledge
-0007). HA-Services-Deployer has since shipped its bare-metal orchestration
-endpoints (`/home/lnb/Desktop/HA/HA-Services-Deployer/knowledge/0007-bare-metal-orchestration-scope.md`),
+The orchestration operations surface was initially designed against an assumed
+Deployer contract, explicitly marked as assumptions pending the Deployer-side
+knowledge 0007. HA-Services-Deployer has since shipped its bare-metal orchestration
+endpoints (`/home/lnb/Desktop/HA/maintanance/HA-Services-Deployer/knowledge/0007-bare-metal-orchestration-scope.md`),
 and this service's proxy was reconciled against the Deployer's actual code
 (`internal/server/handlers_deploy.go`, `internal/server/router.go`,
 `internal/orchestrator`) and re-verified against a live local Deployer
@@ -96,5 +95,5 @@ enabled, scanning this workspace; Tinyvisor reachable):
 - `internal/deployer/client.go` — upstream paths and `X-Deploy-Token` injection.
 - `internal/models/orchestration.go` — reconciled shapes.
 - `internal/server/orchestration_test.go` — stub-Deployer coverage of the same contract.
-- [xref] `/home/lnb/Desktop/HA/HA-Services-Deployer/internal/server/handlers_deploy.go` — upstream implementation.
-- [xref] `/home/lnb/Desktop/HA/HA-Services-Deployer/knowledge/0007-bare-metal-orchestration-scope.md` — upstream scope entry.
+- [xref] `/home/lnb/Desktop/HA/maintanance/HA-Services-Deployer/internal/server/handlers_deploy.go` — upstream implementation.
+- [xref] `/home/lnb/Desktop/HA/maintanance/HA-Services-Deployer/knowledge/0007-bare-metal-orchestration-scope.md` — upstream scope entry.

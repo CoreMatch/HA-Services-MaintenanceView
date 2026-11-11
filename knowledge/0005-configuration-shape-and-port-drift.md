@@ -37,15 +37,15 @@ Record the verified shape and the drift:
   - the Docker image `EXPOSE 18081` (`Dockerfile:L40 fp=416eab00`);
   - the platform compose maps `${MAINTENANCEVIEW_PORT:-18081}` and renders a
     config with `listen: ":18081"` (HA-Services-Deployer
-    `/home/lnb/Desktop/HA/HA-Services-Deployer/deploy/docker-compose.yml (field: MAINTENANCEVIEW_PORT)`,
-    `/home/lnb/Desktop/HA/HA-Services-Deployer/deploy/config/ha-services-maintenance-view.yaml.tmpl (field: listen)`).
+    `/home/lnb/Desktop/HA/maintanance/HA-Services-Deployer/deploy/docker-compose.yml (field: MAINTENANCEVIEW_PORT)`,
+    `/home/lnb/Desktop/HA/maintanance/HA-Services-Deployer/deploy/config/ha-services-maintenance-view.yaml.tmpl (field: listen)`).
   So `:2771` applies only to a bare local `go run .`; composed deployments
   use `:18081`.
 - **Accidental artifacts tracked in git.** `config.yaml.bak.0` and
   `config.yaml.bak.1` (both containing an `:18081` config) are tracked.
   They are migration backups from the author's machine, not intended
-  content. `.gitignore` also carries a temporary entry for stray `1` files
-  (`.gitignore:L7 fp=4355a46b`).
+  content. An earlier survey recorded a temporary `.gitignore` entry for
+  stray `1` files; that rule is absent from the current `.gitignore`.
 
 ## Consequences
 
@@ -70,6 +70,6 @@ Record the verified shape and the drift:
   `internal/config/migrations.go::BackupConfigFile`.
 - `config.yaml.bak.0`, `config.yaml.bak.1` — tracked migration backups.
 - `README.md:L37-L39 fp=195b56d4`; `Dockerfile:L40 fp=416eab00`; HA-Services-Deployer
-  `/home/lnb/Desktop/HA/HA-Services-Deployer/deploy/config/ha-services-maintenance-view.yaml.tmpl (field: listen)`
+  `/home/lnb/Desktop/HA/maintanance/HA-Services-Deployer/deploy/config/ha-services-maintenance-view.yaml.tmpl (field: listen)`
   (`listen: ":18081"`).
 - `config.example.yaml` — matches code defaults (`:2771`).
