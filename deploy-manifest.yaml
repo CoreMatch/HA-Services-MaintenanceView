@@ -80,11 +80,13 @@ baremetal:
 container:
   enabled: false
   # 容器形态镜像：已真实发布（Docker Hub，build → push → 回拉 → 挂回
-  # compose 平台冒烟全过，前端已内嵌构建）。digest 为生效引用，tag 仅
-  # 可读别名。部署时 Deployer 按 digest 优先真实拉取本镜像
+  # compose 平台冒烟全过，前端已内嵌构建）。镜像为 linux/amd64 +
+  # linux/arm64 多架构 manifest list，digest 钉的是 manifest list 摘要
+  #（非单平台子摘要），为生效引用，tag 仅可读别名。
+  # 部署时 Deployer 按 digest 优先真实拉取本镜像
   #（鉴权沿用宿主 docker 登录态；拉后摘要对照不符即响亮失败）。
   image:
     source: registry
     repo: limeight/ha-services-maintenance-view
-    tag: "22c1d8e"
-    digest: "sha256:c350e9b06eb41ef51a9289e314434befe6d839cca5d08e7269fdc19c17cb6794"
+    tag: "4567105"
+    digest: "sha256:52ee8d3d1a0af9695f815870b0f25ecbef2e9141c8e65735585750ed414b908a"
