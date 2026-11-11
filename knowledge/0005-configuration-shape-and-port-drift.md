@@ -36,9 +36,9 @@ Record the verified shape and the drift:
   Container deployments indeed use `:18081`:
   - the Docker image `EXPOSE 18081` (`Dockerfile:L40 fp=416eab00`);
   - the platform compose maps `${MAINTENANCEVIEW_PORT:-18081}` and renders a
-    config with `listen: ":18081"` (HA-Services-Deployer
-    `/home/lnb/Desktop/HA/maintanance/HA-Services-Deployer/deploy/docker-compose.yml (field: MAINTENANCEVIEW_PORT)`,
-    `/home/lnb/Desktop/HA/maintanance/HA-Services-Deployer/deploy/config/ha-services-maintenance-view.yaml.tmpl (field: listen)`).
+    config with `listen: ":18081"` (HA-Cupbearer
+    `/home/lnb/Desktop/HA/maintanance/HA-Cupbearer/deploy/docker-compose.yml (field: MAINTENANCEVIEW_PORT)`,
+    `/home/lnb/Desktop/HA/maintanance/HA-Cupbearer/deploy/config/ha-services-maintenance-view.yaml.tmpl (field: listen)`).
   So `:2771` applies only to a bare local `go run .`; composed deployments
   use `:18081`.
 - **Accidental artifacts tracked in git.** `config.yaml.bak.0` and
@@ -69,7 +69,7 @@ Record the verified shape and the drift:
   `internal/config/migrations.go::MigrateConfig`,
   `internal/config/migrations.go::BackupConfigFile`.
 - `config.yaml.bak.0`, `config.yaml.bak.1` — tracked migration backups.
-- `README.md:L37-L39 fp=195b56d4`; `Dockerfile:L40 fp=416eab00`; HA-Services-Deployer
-  `/home/lnb/Desktop/HA/maintanance/HA-Services-Deployer/deploy/config/ha-services-maintenance-view.yaml.tmpl (field: listen)`
+- `README.md:L37-L39 fp=195b56d4`; `Dockerfile:L40 fp=416eab00`; HA-Cupbearer
+  `/home/lnb/Desktop/HA/maintanance/HA-Cupbearer/deploy/config/ha-services-maintenance-view.yaml.tmpl (field: listen)`
   (`listen: ":18081"`).
 - `config.example.yaml` — matches code defaults (`:2771`).

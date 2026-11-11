@@ -26,13 +26,13 @@ Record the gaps as-is.
    backend code here fetches an artifact from the deployer, replaces a
    binary, or restarts anything directly (0001). The legacy bootstrap page
    only links out (`frontend/src/BootstrapView.tsx (download_url)`); binary
-   lifecycle is delegated to HA-Services-Deployer's orchestration endpoints
+   lifecycle is delegated to HA-Cupbearer's orchestration endpoints
    via the proxy (`internal/server/handlers_orchestration.go (TriggerDeploy)`).
 2. **Content verification.** sha256/size are displayed but never checked
-   (0001). This mirrors the deployer-side gap (HA-Services-Deployer
+   (0001). This mirrors the deployer-side gap (HA-Cupbearer
    knowledge base 0003): today no component verifies artifact bytes.
 3. **Direct process management.** This service still performs no
-   start/stop/restart/status itself; it proxies the Deployer orchestrator,
+   start/stop/restart/status itself; it proxies the Cupbearer orchestrator,
    which drives Tinyvisor
    (`internal/server/handlers_orchestration.go (GetOrchestrationStatus)`).
 4. **Multi-artifact selection.** Only `artifacts[0]` is ever considered
@@ -40,7 +40,7 @@ Record the gaps as-is.
    `frontend/src/BootstrapView.tsx (runPrecheck)`).
 5. **Bootstrap coverage.** 3 services have specs; the rest of the platform
    (haskinlib, winnerproxy, mca-server, ha-webui-sdkhandler,
-   ha-services-deployer, this service itself) has none
+   ha-cupbearer, this service itself) has none
    (`internal/server/bootstrap_specs.go (bootstrapSpecs)`).
 
 ### Questions pending author confirmation
@@ -61,7 +61,7 @@ Record the gaps as-is.
   network-exposed hosts) are recorded in 0004.
 - **Authentication/authorization (2026-11-08):** single-credential session
   model shipped — panel login verifies against `deployer.token` (the
-  existing ops identity), the proxy injects the token into outbound Deployer
+  existing ops identity), the proxy injects the token into outbound Cupbearer
   mutation requests, `GET /api/config` is redacted, and mutation endpoints
   fail closed when the token is unset
   (`internal/server/auth.go (authMiddleware)`,

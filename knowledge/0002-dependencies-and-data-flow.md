@@ -6,14 +6,14 @@ Accepted (records current state)
 
 ## Context
 
-The service is a thin host around data owned by HA-Services-Deployer. It
+The service is a thin host around data owned by HA-Cupbearer. It
 consumes the deployer's `/api/v1/*` surface.
 
 ## Decision
 
 Record the verified dependency and data-flow shape:
 
-- **Upstream: HA-Services-Deployer (hard dependency).**
+- **Upstream: HA-Cupbearer (hard dependency).**
   `deployer.base_url` (default `http://127.0.0.1` + `:18080`,
   `internal/models/config.go::DefaultConfig`). The client calls exactly
   three endpoints (`internal/deployer/client.go::Healthz`,
@@ -24,7 +24,7 @@ Record the verified dependency and data-flow shape:
   - `GET /api/v1/projects` (the binary-only projection; consumed by
     `GET /api/projects` and by the deployment/precheck/initialize handlers)
   HTTP client timeout is 10 seconds (`internal/deployer/client.go::NewClient`).
-  Deployer unreachable → the affected endpoints return 502
+  Cupbearer unreachable → the affected endpoints return 502
   (`internal/server/handlers.go::GetProjects`).
 - **Local state: one JSON file.** Per-project `deploy_dir`/`port` settings in
   `state.projects_path` (default `./data/projects.json`,

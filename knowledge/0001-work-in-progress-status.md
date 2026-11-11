@@ -38,7 +38,7 @@ Record the honest inventory at HEAD.
   0003).
 - Frontend: a tabbed single-page app (no router library). The shell with
   session gate and tab navigation (`frontend/src/App.tsx (App)`) hosts the
-  orchestration operations view (Deployer proxy: status/validation/runs/
+  orchestration operations view (Cupbearer proxy: status/validation/runs/
   deploy/rollback, `frontend/src/OrchestrationView.tsx (OrchestrationView)`)
   and the legacy bootstrap page listing projects, editing deploy dir/port,
   and triggering precheck/initialize
@@ -52,17 +52,17 @@ Record the honest inventory at HEAD.
   bootstrap page only renders a plain download link to the deployer artifact
   (`frontend/src/BootstrapView.tsx (download_url)`); nothing in this backend
   fetches, replaces, or installs binaries. Binary lifecycle is proxied to
-  HA-Services-Deployer's orchestration endpoints instead
+  HA-Cupbearer's orchestration endpoints instead
   (`internal/server/handlers_orchestration.go (TriggerDeploy)`).
 - **No sha256 verification anywhere in this service.** Digests are displayed
   (`frontend/src/BootstrapView.tsx (sha256)`) but never computed or compared.
 - **No direct process management** — lifecycle actions are proxied to the
-  Deployer orchestrator, which drives Tinyvisor
+  Cupbearer orchestrator, which drives Tinyvisor
   (`internal/server/handlers_orchestration.go (TriggerRollback)`); this
   service never calls Tinyvisor itself.
 - **Authentication** is a single-credential session model: panel login is
   verified against `deployer.token` (the existing ops identity), the proxy
-  injects the token into outbound Deployer mutation requests, and
+  injects the token into outbound Cupbearer mutation requests, and
   `GET /api/config` is redacted (`internal/server/auth.go (authMiddleware)`,
   `internal/server/handlers.go (GetConfig)`). With `deployer.token` empty the
   legacy login-free behavior is kept and mutation proxying fails closed.
@@ -91,5 +91,5 @@ Record the honest inventory at HEAD.
   `frontend/src/App.tsx`, `frontend/src/OrchestrationView.tsx`,
   `frontend/src/BootstrapView.tsx` as cited above.
 - Contract exclusion: HA-Contract
-  `/home/lnb/Desktop/HA/maintanance/HA-Services-Deployer/knowledge/0006-version-manifest.md (Purpose)`
+  `/home/lnb/Desktop/HA/maintanance/HA-Cupbearer/knowledge/0006-version-manifest.md (Purpose)`
   ("work-in-progress project and is not covered by this contract").

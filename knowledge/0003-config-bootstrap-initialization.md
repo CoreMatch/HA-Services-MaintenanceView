@@ -8,7 +8,7 @@ Accepted (records current state; limited coverage by design at this stage)
 
 "First-deployment configuration initialization" is explicitly **out of
 scope of the version-manifest contract** (HA-Contract
-`/home/lnb/Desktop/HA/maintanance/HA-Services-Deployer/knowledge/0006-version-manifest.md::Purpose`).
+`/home/lnb/Desktop/HA/maintanance/HA-Cupbearer/knowledge/0006-version-manifest.md::Purpose`).
 This service nonetheless implements a first-install config bootstrap for a
 few services. It is internal behavior, not a contract.
 
@@ -79,5 +79,5 @@ Record exactly what the bootstrap does and assumes:
   `internal/server/handlers.go::collectDependencyPorts` — dependency port
   requirements.
 - Contract context: HA-Contract
-  `/home/lnb/Desktop/HA/maintanance/HA-Services-Deployer/knowledge/0006-version-manifest.md::Purpose`
+  `/home/lnb/Desktop/HA/maintanance/HA-Cupbearer/knowledge/0006-version-manifest.md::Purpose`
   (first-deployment config initialization is out of manifest scope).

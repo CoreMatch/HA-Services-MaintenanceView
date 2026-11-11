@@ -7,21 +7,21 @@ Accepted (records current state)
 ## Context
 
 The orchestration operations surface was initially designed against an assumed
-Deployer contract, explicitly marked as assumptions pending the Deployer-side
-knowledge 0007. HA-Services-Deployer has since shipped its bare-metal orchestration
-endpoints (`/home/lnb/Desktop/HA/maintanance/HA-Services-Deployer/knowledge/0007-bare-metal-orchestration-scope.md`),
-and this service's proxy was reconciled against the Deployer's actual code
+Cupbearer contract, explicitly marked as assumptions pending the Cupbearer-side
+knowledge 0007. HA-Cupbearer has since shipped its bare-metal orchestration
+endpoints (`/home/lnb/Desktop/HA/maintanance/HA-Cupbearer/knowledge/0007-bare-metal-orchestration-scope.md`),
+and this service's proxy was reconciled against the Cupbearer's actual code
 (`internal/server/handlers_deploy.go`, `internal/server/router.go`,
-`internal/orchestrator`) and re-verified against a live local Deployer
+`internal/orchestrator`) and re-verified against a live local Cupbearer
 instance on 2026-11-08.
 
 ## Decision
 
 Record the reconciled contract as implemented at HEAD.
 
-### Upstream endpoints proxied (Deployer actual, not assumed)
+### Upstream endpoints proxied (Cupbearer actual, not assumed)
 
-| MV endpoint | Deployer endpoint | Auth |
+| MV endpoint | Cupbearer endpoint | Auth |
 |---|---|---|
 | `GET /api/orchestration/manifest` | `GET /api/v1/deploy/manifests` | none (read-only) |
 | `GET /api/orchestration/validation` | `GET /api/v1/deploy/validate` | none (read-only) |
@@ -35,7 +35,7 @@ Differences from the design-doc assumptions that matter:
 
 - The path group is `/api/v1/deploy/*`, not `/api/v1/orchestration/*`.
 - Mutation auth is the `X-Deploy-Token` request header, not
-  `Authorization: Bearer`. Fail-closed: unconfigured token on the Deployer
+  `Authorization: Bearer`. Fail-closed: unconfigured token on the Cupbearer
   side answers 503; a wrong token answers 401.
 - Mutations return the full run snapshot (202), not a bare `run_id`.
 - Rollback is single-project `{project, to, cascade}`; empty `to` selects
@@ -45,7 +45,7 @@ Differences from the design-doc assumptions that matter:
   refused runs answer 400 with `data.errors` (validation) or
   `data.preflight` (blockers/warnings). Shapes mirrored in
   `internal/models/orchestration.go`.
-- The Deployer also serves read-only `GET /api/v1/deploy/preflight`; this
+- The Cupbearer also serves read-only `GET /api/v1/deploy/preflight`; this
   service does not proxy it (refusal payloads and run snapshots already
   carry the full preflight report).
 
@@ -55,17 +55,17 @@ The trigger gate (`internal/server/handlers_orchestration.go::gateManagedProject
 judges by the manifest-declared `manager`, matching the design: only
 `manager: tinyvisor` projects may be deployed/rolled back from this panel;
 `aapanel`/`manual` answer 409 with per-project readable reasons, `external`
-projects answer as external dependencies. The Deployer's status view reports
+projects answer as external dependencies. The Cupbearer's status view reports
 the *effective* manager after deployment-context overrides; in a local
 verification context the two can differ, and the panel deliberately follows
 the declared value (fail-closed). The status table in the UI shows the
-effective value and annotates the declaration when they drift. The Deployer
+effective value and annotates the declaration when they drift. The Cupbearer
 foreign semantics remain the final backstop: foreign projects are never
 touched regardless.
 
 ### Live alignment evidence (2026-11-08)
 
-Verified against a live local Deployer (isolated environment, orchestration
+Verified against a live local Cupbearer (isolated environment, orchestration
 enabled, scanning this workspace; Tinyvisor reachable):
 
 - Read side: 13 aggregated manifests; validation `ok` with one duplicate-name
@@ -94,6 +94,6 @@ enabled, scanning this workspace; Tinyvisor reachable):
 - `internal/server/handlers_orchestration.go` — proxy handlers and manager gate.
 - `internal/deployer/client.go` — upstream paths and `X-Deploy-Token` injection.
 - `internal/models/orchestration.go` — reconciled shapes.
-- `internal/server/orchestration_test.go` — stub-Deployer coverage of the same contract.
-- [xref] `/home/lnb/Desktop/HA/maintanance/HA-Services-Deployer/internal/server/handlers_deploy.go` — upstream implementation.
-- [xref] `/home/lnb/Desktop/HA/maintanance/HA-Services-Deployer/knowledge/0007-bare-metal-orchestration-scope.md` — upstream scope entry.
+- `internal/server/orchestration_test.go` — stub-Cupbearer coverage of the same contract.
+- [xref] `/home/lnb/Desktop/HA/maintanance/HA-Cupbearer/internal/server/handlers_deploy.go` — upstream implementation.
+- [xref] `/home/lnb/Desktop/HA/maintanance/HA-Cupbearer/knowledge/0007-bare-metal-orchestration-scope.md` — upstream scope entry.
