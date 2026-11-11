@@ -137,6 +137,48 @@ func (c *Client) TriggerRollback(ctx context.Context, req models.RollbackRequest
 	return c.doRaw(ctx, http.MethodPost, "/api/v1/deploy/rollback", req, true)
 }
 
+// --- 首次运行初始化（向导）端点：/api/v1/deploy/bootstrap/* ---
+
+// BootstrapStatusRaw 透传初始化层现状与向导元数据（只读）。
+func (c *Client) BootstrapStatusRaw(ctx context.Context) (json.RawMessage, *UpstreamError) {
+	return c.doRaw(ctx, http.MethodGet, "/api/v1/deploy/bootstrap/status", nil, false)
+}
+
+// BootstrapInfraRaw 透传共享 MySQL/Redis 基础设施现状（只读探测）。
+func (c *Client) BootstrapInfraRaw(ctx context.Context) (json.RawMessage, *UpstreamError) {
+	return c.doRaw(ctx, http.MethodGet, "/api/v1/deploy/bootstrap/infra", nil, false)
+}
+
+// BootstrapInfraMySQL 一键确保 MySQL 可用（等真能查询才返回，长耗时）。
+func (c *Client) BootstrapInfraMySQL(ctx context.Context, body any) (json.RawMessage, *UpstreamError) {
+	return c.doRaw(ctx, http.MethodPost, "/api/v1/deploy/bootstrap/infra/mysql", body, true)
+}
+
+// BootstrapInfraRedis 一键确保 Redis 可用（等真能 PING 才返回，长耗时）。
+func (c *Client) BootstrapInfraRedis(ctx context.Context, body any) (json.RawMessage, *UpstreamError) {
+	return c.doRaw(ctx, http.MethodPost, "/api/v1/deploy/bootstrap/infra/redis", body, true)
+}
+
+// BootstrapPlan 透传 dry-run 计划（校验缺值，上游 400 携带分项人话错误）。
+func (c *Client) BootstrapPlan(ctx context.Context, inputs any) (json.RawMessage, *UpstreamError) {
+	return c.doRaw(ctx, http.MethodPost, "/api/v1/deploy/bootstrap/plan", inputs, true)
+}
+
+// BootstrapRun 触发一键初始化运行（异步），返回运行快照原始 JSON。
+func (c *Client) BootstrapRun(ctx context.Context, inputs any) (json.RawMessage, *UpstreamError) {
+	return c.doRaw(ctx, http.MethodPost, "/api/v1/deploy/bootstrap/run", inputs, true)
+}
+
+// BootstrapRunsRaw 透传初始化运行历史。
+func (c *Client) BootstrapRunsRaw(ctx context.Context) (json.RawMessage, *UpstreamError) {
+	return c.doRaw(ctx, http.MethodGet, "/api/v1/deploy/bootstrap/runs", nil, false)
+}
+
+// BootstrapRunRaw 透传单条初始化运行记录（断点续跑的可见面）。
+func (c *Client) BootstrapRunRaw(ctx context.Context, id string) (json.RawMessage, *UpstreamError) {
+	return c.doRaw(ctx, http.MethodGet, "/api/v1/deploy/bootstrap/runs/"+id, nil, false)
+}
+
 // doRaw 发送请求并返回标准信封中的 data 段原始 JSON。
 // withAuth 为 true 时注入部署凭据（X-Deploy-Token）；未配置则 fail-closed。
 func (c *Client) doRaw(ctx context.Context, method, path string, body any, withAuth bool) (json.RawMessage, *UpstreamError) {
@@ -164,10 +206,15 @@ func (c *Client) doRaw(ctx context.Context, method, path string, body any, withA
 		req.Header.Set("X-Deploy-Token", c.token)
 	}
 
-	// 触发类调用允许上游做更久的计划/预检。
+	// 触发类调用允许上游做更久的计划/预检。基础设施一键端点要等
+	// MySQL/Redis 真正就绪（拉镜像+首次初始化），给足 5 分钟。
 	httpClient := c.httpClient
 	if method == http.MethodPost {
-		httpClient = &http.Client{Timeout: 30 * time.Second}
+		timeout := 30 * time.Second
+		if strings.HasPrefix(path, "/api/v1/deploy/bootstrap/infra/") {
+			timeout = 5 * time.Minute
+		}
+		httpClient = &http.Client{Timeout: timeout}
 	}
 
 	resp, err := httpClient.Do(req)

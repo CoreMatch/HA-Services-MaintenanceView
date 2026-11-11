@@ -11,6 +11,11 @@ type ServerConfig struct {
 	Listen        string `yaml:"listen" json:"listen"`
 	PublicBaseURL string `yaml:"public_base_url" json:"public_base_url"`
 	FrontendDist  string `yaml:"frontend_dist" json:"frontend_dist"`
+	// LoopbackSession 为 true 时：来自回环地址的请求免登录（会话门放行）。
+	// 仅用于 Deployer 自动拉起的受管形态——面板被钉在 127.0.0.1，回环信任
+	// 与既有"SSH 隧道即本人访问"的运维约定同级；部署凭据仍由服务端持有并
+	// 转发，浏览器永远接触不到。独立部署形态默认 false（零回归）。
+	LoopbackSession bool `yaml:"loopback_session" json:"loopback_session"`
 }
 
 // DeployerConfig 描述上游 Deployer 的连接方式。

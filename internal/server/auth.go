@@ -4,6 +4,7 @@ import (
 	"crypto/rand"
 	"crypto/subtle"
 	"encoding/hex"
+	"net"
 	"net/http"
 	"sync"
 	"time"
@@ -73,10 +74,22 @@ func (h *Handler) authEnabled() bool {
 	return h.cfg.Deployer.Token != ""
 }
 
+// loopbackTrusted 报告当前请求是否享受回环免登录：仅当配置开启
+// loopback_session（Deployer 自启的受管形态）且对端确为回环地址。
+// 面板被钉在 127.0.0.1，回环信任等价于本机操作员；部署凭据仍由服务端
+// 持有转发，浏览器不接触凭据，安全边界不变。
+func (h *Handler) loopbackTrusted(c *gin.Context) bool {
+	if !h.cfg.Server.LoopbackSession {
+		return false
+	}
+	ip := net.ParseIP(c.ClientIP())
+	return ip != nil && ip.IsLoopback()
+}
+
 // authMiddleware 保护 /api/* 中在其后注册的路由。
 func (h *Handler) authMiddleware() gin.HandlerFunc {
 	return func(c *gin.Context) {
-		if !h.authEnabled() {
+		if !h.authEnabled() || h.loopbackTrusted(c) {
 			c.Next()
 			return
 		}
@@ -94,9 +107,15 @@ func (h *Handler) authMiddleware() gin.HandlerFunc {
 }
 
 // SessionStatus 返回会话状态（只含布尔标志，不含任何凭据）。
+// 回环受信形态对浏览器表现为"无需登录"（auth_required=false）。
 func (h *Handler) SessionStatus(c *gin.Context) {
 	authenticated := false
-	if h.authEnabled() {
+	required := h.authEnabled()
+	if required && h.loopbackTrusted(c) {
+		required = false
+		authenticated = true
+	}
+	if h.authEnabled() && !h.loopbackTrusted(c) {
 		if id, err := c.Cookie(sessionCookieName); err == nil {
 			authenticated = h.sessions.Valid(id)
 		}
@@ -105,7 +124,7 @@ func (h *Handler) SessionStatus(c *gin.Context) {
 		"success": true,
 		"message": "session status",
 		"data": gin.H{
-			"auth_required": h.authEnabled(),
+			"auth_required": required,
 			"authenticated": authenticated,
 		},
 	})
