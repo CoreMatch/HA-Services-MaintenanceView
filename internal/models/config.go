@@ -38,8 +38,8 @@ func DefaultConfig() *Config {
 	return &Config{
 		Version: "1",
 		Server: ServerConfig{
-			Listen:        ":2771",
-			PublicBaseURL: "http://127.0.0.1:2771",
+			Listen:        ":18081",
+			PublicBaseURL: "http://127.0.0.1:18081",
 			FrontendDist:  "./frontend/dist",
 		},
 		Deployer: DeployerConfig{
