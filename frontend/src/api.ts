@@ -259,6 +259,8 @@ export type BootstrapStatus = {
     client_ids: Record<string, string>;
     db_names: Record<string, string>;
     app_db_user: string;
+    config_files: Record<string, string>;
+    baremetal_outputs: Record<string, string>;
   };
   maintenance_view: { mode: string; address?: string; pid?: number; healthy?: boolean; detail?: string };
 };
