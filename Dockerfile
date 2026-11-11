@@ -1,5 +1,5 @@
 # syntax=docker/dockerfile:1
-ARG GO_VERSION=1.25.0
+ARG GO_VERSION=1.26.10
 ARG NODE_VERSION=22-alpine
 
 FROM node:${NODE_VERSION} AS frontend
