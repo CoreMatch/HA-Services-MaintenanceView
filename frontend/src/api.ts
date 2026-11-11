@@ -134,6 +134,8 @@ export type UpstreamErrorData = {
   errors?: string[];
   preflight?: PreflightReport;
   rejections?: ManagerGateRejection[];
+  // 初始化向导：逐项字段人话错误（必填缺失当场拦截）。
+  field_errors?: { field: string; message: string }[];
 };
 
 export type ApiFailure = {
@@ -223,6 +225,62 @@ function normalizeSummary(summary: RunSummary): RunSummary {
   return { ...summary, outcomes: summary.outcomes ?? {} };
 }
 
+// ---- 首次运行初始化（向导）----
+
+export type BootstrapInfraInstance = {
+  kind: string;
+  mode: string; // container | external | absent
+  container_name?: string;
+  compose_service?: string;
+  image?: string;
+  host_port?: number;
+  container_port?: number;
+  baremetal_address?: string;
+  compose_address?: string;
+  data_volume?: string;
+  healthy: boolean;
+  detail?: string;
+};
+
+export type BootstrapInfra = {
+  mysql: BootstrapInfraInstance;
+  redis: BootstrapInfraInstance;
+};
+
+export type BootstrapStatus = {
+  state_exists: boolean;
+  secrets: Record<string, string>;
+  signing_key_fingerprint?: string;
+  artifacts: { env_file: boolean; signing_private_key: boolean; signing_public_key: boolean };
+  deploy_token_configured: boolean;
+  templates: string[];
+  infra: BootstrapInfra;
+  defaults: {
+    client_ids: Record<string, string>;
+    db_names: Record<string, string>;
+    app_db_user: string;
+  };
+  maintenance_view: { mode: string; address?: string; pid?: number; healthy?: boolean; detail?: string };
+};
+
+export type PlanItem = { step: string; action: string; target: string; detail: string };
+
+export type BootstrapPlan = { items: PlanItem[]; secrets: Record<string, string> };
+
+export type BootstrapStep = { name: string; status: string; detail?: string; updated_at: string };
+
+export type BootstrapRun = {
+  id: string;
+  state: string; // running | done | failed
+  dry_run: boolean;
+  steps: Record<string, BootstrapStep>;
+  step_order: string[];
+  secrets?: Record<string, string>;
+  notes?: string[];
+  started_at: string;
+  finished_at?: string;
+};
+
 export const api = {
   session: () => requestEnvelope<SessionStatus>("/api/session"),
   login: (token: string) =>
@@ -255,6 +313,32 @@ export const api = {
         body: JSON.stringify(request),
       })
     ),
+
+  // 首次运行初始化（向导）。
+  bootstrapStatus: () => requestEnvelope<BootstrapStatus>("/api/bootstrap/status"),
+  bootstrapInfra: () => requestEnvelope<BootstrapInfra>("/api/bootstrap/infra"),
+  bootstrapInfraMySQL: (body: unknown) =>
+    requestEnvelope<BootstrapInfraInstance>("/api/bootstrap/infra/mysql", {
+      method: "POST",
+      body: JSON.stringify(body ?? {}),
+    }),
+  bootstrapInfraRedis: (body: unknown) =>
+    requestEnvelope<BootstrapInfraInstance>("/api/bootstrap/infra/redis", {
+      method: "POST",
+      body: JSON.stringify(body ?? {}),
+    }),
+  bootstrapPlan: (inputs: unknown) =>
+    requestEnvelope<BootstrapPlan>("/api/bootstrap/plan", {
+      method: "POST",
+      body: JSON.stringify(inputs),
+    }),
+  bootstrapRun: (inputs: unknown) =>
+    requestEnvelope<BootstrapRun>("/api/bootstrap/run", {
+      method: "POST",
+      body: JSON.stringify(inputs),
+    }),
+  bootstrapRunById: (id: string) =>
+    requestEnvelope<BootstrapRun>(`/api/bootstrap/runs/${encodeURIComponent(id)}`),
 };
 
 // 只有 manager == tinyvisor 的 service 项目可由本面板部署/回滚。

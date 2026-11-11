@@ -2,7 +2,7 @@ import { useCallback, useEffect, useState } from "react";
 import { Badge, Banner, Button, Field, Input, Spinner } from "@ha/ui";
 import { api, ApiError, type SessionStatus } from "./api";
 import OrchestrationView from "./OrchestrationView";
-import BootstrapView from "./BootstrapView";
+import WizardView from "./WizardView";
 
 // 会话门：配置了 deployer.token 的实例必须先登录（登录校验复用的就是
 // 部署凭据本身，面板不另设账号体系）；未配置时保持免登录，界面给出
@@ -177,7 +177,7 @@ export default function App() {
           ))}
         </nav>
 
-        {tab === "orchestration" ? <OrchestrationView /> : <BootstrapView />}
+        {tab === "orchestration" ? <OrchestrationView /> : <WizardView />}
       </div>
     </main>
   );

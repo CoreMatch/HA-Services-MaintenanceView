@@ -50,6 +50,19 @@ func NewRouter(cfg *models.Config, client *deployer.Client, store *state.Store, 
 			orchestration.POST("/deploy", handler.TriggerDeploy)
 			orchestration.POST("/rollback", handler.TriggerRollback)
 		}
+
+		// 首次运行初始化向导（一键开荒）：透传 Deployer bootstrap 层。
+		bootstrap := api.Group("/bootstrap")
+		{
+			bootstrap.GET("/status", handler.GetBootstrapStatus)
+			bootstrap.GET("/infra", handler.GetBootstrapInfra)
+			bootstrap.POST("/infra/mysql", handler.PostBootstrapInfraMySQL)
+			bootstrap.POST("/infra/redis", handler.PostBootstrapInfraRedis)
+			bootstrap.POST("/plan", handler.PostBootstrapPlan)
+			bootstrap.POST("/run", handler.PostBootstrapRun)
+			bootstrap.GET("/runs", handler.GetBootstrapRuns)
+			bootstrap.GET("/runs/:id", handler.GetBootstrapRun)
+		}
 	}
 
 	router.NoRoute(func(c *gin.Context) {
