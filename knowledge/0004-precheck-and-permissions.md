@@ -50,7 +50,7 @@ check the running platform, or validate the artifact against the manifest.
     tampering path); or
   - the deploy directory or this service is **exposed to an untrusted
     network** (the precheck endpoint lets anyone with a panel session
-    chmod/create directories; when `deployer.token` is unset the panel is
+    chmod/create directories; when `cupbearer.token` is unset the panel is
     login-free, see 0001/0006).
   In either of those environments the permission model would need to be
   tightened; nothing in this entry is an endorsement of 0777 beyond the

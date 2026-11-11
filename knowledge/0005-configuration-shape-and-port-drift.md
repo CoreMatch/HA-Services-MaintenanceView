@@ -20,7 +20,7 @@ Record the verified shape and the drift:
 - **Defaults in code** (`internal/models/config.go::DefaultConfig`):
   `version: "1"`, `server.listen: ":2771"`, `server.public_base_url:
   "http://127.0.0.1" + ":2771"`, `server.frontend_dist: "./frontend/dist"`,
-  `deployer.base_url: "http://127.0.0.1" + ":18080"`, `state.projects_path:
+  `cupbearer.base_url: "http://127.0.0.1" + ":18080"`, `state.projects_path:
   "./data/projects.json"`.
 - **Migration framework at version "1" with an empty chain**
   (`internal/config/migrations.go::ConfigVersion`,

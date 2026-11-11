@@ -83,7 +83,7 @@ enabled, scanning this workspace; Tinyvisor reachable):
 ## Consequences
 
 - The proxy contract lives in exactly two files
-  (`internal/deployer/client.go`, `internal/models/orchestration.go`);
+  (`internal/cupbearer/client.go`, `internal/models/orchestration.go`);
   upstream evolution is reconciled there and here.
 - Go nil slices serialize as JSON `null` upstream (e.g. empty `errors`);
   the frontend normalizes all list fields in `frontend/src/api.ts` before
@@ -92,7 +92,7 @@ enabled, scanning this workspace; Tinyvisor reachable):
 ## Evidence
 
 - `internal/server/handlers_orchestration.go` — proxy handlers and manager gate.
-- `internal/deployer/client.go` — upstream paths and `X-Deploy-Token` injection.
+- `internal/cupbearer/client.go` — upstream paths and `X-Deploy-Token` injection.
 - `internal/models/orchestration.go` — reconciled shapes.
 - `internal/server/orchestration_test.go` — stub-Cupbearer coverage of the same contract.
 - [xref] `/home/lnb/Desktop/HA/maintanance/HA-Cupbearer/internal/server/handlers_deploy.go` — upstream implementation.

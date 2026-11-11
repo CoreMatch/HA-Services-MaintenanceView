@@ -212,7 +212,7 @@ Point the local `config.yaml` (git-ignored) at the real Cupbearer, reusing the
 deploy token from step 2 as the panel credential:
 
 ```yaml
-deployer:
+cupbearer:
   base_url: http://127.0.0.1:18090
   token: "<same as credentials.json deploy_token>"
 server:

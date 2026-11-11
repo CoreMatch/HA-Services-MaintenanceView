@@ -26,7 +26,7 @@ Record the honest inventory at HEAD.
 - Browser-facing HTTP server serving a single-page React frontend from
   `frontend/dist`, with an SPA fallback and a 503 + hint when the frontend
   build is missing (`internal/server/router.go (NewRouter)`).
-- Project overview merging the deployer's `/api/v1/projects` with local
+- Project overview merging the Cupbearer's `/api/v1/projects` with local
   per-project settings (`internal/server/handlers.go (buildProjectViews)`).
 - Saving per-project `deploy_dir` and `port` with basic validation and
   cross-project port-uniqueness checks
@@ -49,7 +49,7 @@ Record the honest inventory at HEAD.
 ### What does not exist (placeholders / missing)
 
 - **No artifact download, install, or update flow of its own.** The legacy
-  bootstrap page only renders a plain download link to the deployer artifact
+  bootstrap page only renders a plain download link to the Cupbearer artifact
   (`frontend/src/BootstrapView.tsx (download_url)`); nothing in this backend
   fetches, replaces, or installs binaries. Binary lifecycle is proxied to
   HA-Cupbearer's orchestration endpoints instead
@@ -61,10 +61,10 @@ Record the honest inventory at HEAD.
   (`internal/server/handlers_orchestration.go (TriggerRollback)`); this
   service never calls Tinyvisor itself.
 - **Authentication** is a single-credential session model: panel login is
-  verified against `deployer.token` (the existing ops identity), the proxy
+  verified against `cupbearer.token` (the existing ops identity), the proxy
   injects the token into outbound Cupbearer mutation requests, and
   `GET /api/config` is redacted (`internal/server/auth.go (authMiddleware)`,
-  `internal/server/handlers.go (GetConfig)`). With `deployer.token` empty the
+  `internal/server/handlers.go (GetConfig)`). With `cupbearer.token` empty the
   legacy login-free behavior is kept and mutation proxying fails closed.
 - **Only the first artifact is ever used** — UI and handlers take
   `artifacts[0]` (`frontend/src/BootstrapView.tsx (runPrecheck)`,
