@@ -61,6 +61,18 @@ func Load(path string) (*models.Config, error) {
 		data = newData
 	}
 
+	// 历史段名兼容：上游更名前配置段叫 deployer，更名后为 cupbearer。
+	// cupbearer 段缺失而 deployer 段存在时按 cupbearer 消费（只改内存视图，
+	// 不回写文件——存量配置是现场资产，不动；两段并存时 cupbearer 优先）。
+	if _, hasNew := migrated["cupbearer"]; !hasNew {
+		if legacy, hasLegacy := migrated["deployer"]; hasLegacy {
+			migrated["cupbearer"] = legacy
+			if aliased, err := yaml.Marshal(migrated); err == nil {
+				data = aliased
+			}
+		}
+	}
+
 	// 5. Final unmarshal into struct
 	if err := yaml.Unmarshal(data, cfg); err != nil {
 		return nil, err

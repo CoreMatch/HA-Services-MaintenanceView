@@ -10,15 +10,15 @@ import (
 )
 
 // 首次运行初始化向导的代理层：浏览器只调用本进程，部署凭据由本进程注入
-// 出站请求（X-Deploy-Token），绝不下发到前端。上游为 HA-Services-Deployer
-// 的 /api/v1/deploy/bootstrap/*（契约 ha-services-deployer.yaml v1.3.0）。
+// 出站请求（X-Deploy-Token），绝不下发到前端。上游为 HA-Cupbearer
+// 的 /api/v1/deploy/bootstrap/*（契约 ha-cupbearer.yaml v1.3.0）。
 // 风格与编排代理（handlers_orchestration.go）一致：原样透传 data 段 +
 // 类型化错误翻译。
 
 var bootstrapRunIDPattern = regexp.MustCompile(`^[a-zA-Z0-9_-]+$`)
 
 // readBootstrapInputs 原样读取向导提交的统一输入 JSON（不在本层解析字段：
-// 字段校验是 Deployer 的职责，分项人话错误经 400 的 data 段透传回界面）。
+// 字段校验是 Cupbearer 的职责，分项人话错误经 400 的 data 段透传回界面）。
 func readBootstrapInputs(c *gin.Context) (json.RawMessage, bool) {
 	raw, err := io.ReadAll(io.LimitReader(c.Request.Body, 1<<20))
 	if err != nil {

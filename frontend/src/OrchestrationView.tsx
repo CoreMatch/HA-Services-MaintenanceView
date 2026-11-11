@@ -463,7 +463,7 @@ export default function OrchestrationView() {
         <Banner tone="danger">
           <div>
             <div className="font-semibold">
-              操作被拒绝{triggerFailure.upstream_status ? `（Deployer HTTP ${triggerFailure.upstream_status}）` : ""}
+              操作被拒绝{triggerFailure.upstream_status ? `（Cupbearer HTTP ${triggerFailure.upstream_status}）` : ""}
             </div>
             <div className="mt-1">{triggerFailure.message}</div>
             <ErrorPayload failure={triggerFailure} />
@@ -529,7 +529,7 @@ export default function OrchestrationView() {
               <Banner tone="ok">聚合校验通过，全部清单可被编排器接受。</Banner>
             ) : (
               <Banner tone="danger">
-                聚合校验存在 {validation.errors.length} 项错误，Deployer 会拒绝启动任何部署/回滚运行。
+                聚合校验存在 {validation.errors.length} 项错误，Cupbearer 会拒绝启动任何部署/回滚运行。
               </Banner>
             )}
             {validation.errors.length > 0 ? (
@@ -970,7 +970,7 @@ export default function OrchestrationView() {
             <span>
               级联回滚依赖本项目的项目
               <span className="block text-sm text-ink-faint">
-                按依赖拓扑把依赖方一并切回兼容版本（上游语义由 Deployer 解释）
+                按依赖拓扑把依赖方一并切回兼容版本（上游语义由 Cupbearer 解释）
               </span>
             </span>
           </label>

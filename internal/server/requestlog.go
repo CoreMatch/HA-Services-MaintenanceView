@@ -30,7 +30,7 @@ func NewRequestLog() *RequestLog {
 	return &RequestLog{}
 }
 
-// Record 实现 deployer.RequestRecorder。
+// Record 实现 cupbearer.RequestRecorder。
 func (l *RequestLog) Record(method, path string, status int, code string, ok bool) {
 	entry := RequestLogEntry{
 		Time:   time.Now().Format("15:04:05"),

@@ -4,7 +4,7 @@ import { api, ApiError, type SessionStatus } from "./api";
 import OrchestrationView from "./OrchestrationView";
 import WizardView from "./WizardView";
 
-// 会话门：配置了 deployer.token 的实例必须先登录（登录校验复用的就是
+// 会话门：配置了 cupbearer.token 的实例必须先登录（登录校验复用的就是
 // 部署凭据本身，面板不另设账号体系）；未配置时保持免登录，界面给出
 // 醒目提示，变更端点由后端 fail-closed。
 
@@ -27,7 +27,7 @@ function LoginScreen({ onLoggedIn }: { onLoggedIn: () => void }) {
       onLoggedIn();
     } catch (err) {
       if (err instanceof ApiError && err.failure.status === 401) {
-        setError("运维身份校验未通过：请检查输入是否与 Deployer 部署凭据一致。");
+        setError("运维身份校验未通过：请检查输入是否与 Cupbearer 部署凭据一致。");
       } else {
         setError(err instanceof Error ? err.message : String(err));
       }
@@ -42,7 +42,7 @@ function LoginScreen({ onLoggedIn }: { onLoggedIn: () => void }) {
         <p className="text-sm font-semibold uppercase tracking-wide text-ink-faint">HA Services Maintenance View</p>
         <h1 className="mb-2 mt-2 text-2xl font-bold text-ink">操作员登录</h1>
         <p className="mb-6 text-base leading-relaxed text-ink-muted">
-          本面板复用既有运维身份：输入 Deployer 部署凭据即可登录。凭据只用于这一次校验，
+          本面板复用既有运维身份：输入 Cupbearer 部署凭据即可登录。凭据只用于这一次校验，
           浏览器之后只持有随机会话，任何响应都不回显凭据。
         </p>
         <form
@@ -56,7 +56,7 @@ function LoginScreen({ onLoggedIn }: { onLoggedIn: () => void }) {
               type="password"
               value={token}
               onChange={(event) => setToken(event.target.value)}
-              placeholder="deployer.token"
+              placeholder="cupbearer.token"
               autoFocus
             />
           </Field>
@@ -153,7 +153,7 @@ export default function App() {
 
         {!session.auth_required ? (
           <Banner tone="warn">
-            本实例未配置部署凭据（deployer.token）：处于免登录模式，只读视图可用，
+            本实例未配置部署凭据（cupbearer.token）：处于免登录模式，只读视图可用，
             触发部署/回滚会被后端拒绝（503）。
           </Banner>
         ) : null}

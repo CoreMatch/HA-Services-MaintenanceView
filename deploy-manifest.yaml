@@ -1,5 +1,5 @@
 # HA-Services-MaintenanceView 部署声明（deploy-manifest v1）
-# schema 依据：HA-Services-Deployer internal/manifest/（SchemaVersion=1）
+# schema 依据：HA-Cupbearer internal/manifest/（SchemaVersion=1）
 manifest_version: 1
 kind: service
 project: ha-services-maintenance-view
@@ -31,7 +31,7 @@ facts:
     # 之前，无需会话，确定性 200；internal/server/auth.go SessionStatus）。
     # 更深的端点（/api/projects 等）在启用鉴权后要求会话 Cookie——会话 ID
     # 进程内随机签发、12h 滑动过期，静态冒烟无法持有，故不越鉴权探测；
-    # 项目列表链路改由 deployer 依赖可达性在 preflight 兜底。
+    # 项目列表链路改由 cupbearer 依赖可达性在 preflight 兜底。
     #
     # 断言必须能识破 SPA 静态回退：本服务对未知路径一律回 200 + index.html
     #（server.frontend_dist 托管），旧二进制没有该端点时状态码是回退伪造的。
@@ -46,10 +46,10 @@ facts:
         expect_content_type: application/json
         json_field: data.auth_required
   depends_on:
-    # deployer.base_url 代理 Deployer 只读面；
-    # compose depends_on ha-services-deployer: service_healthy。
+    # cupbearer.base_url 代理 Cupbearer 只读面；
+    # compose depends_on ha-cupbearer: service_healthy。
     # 无数据库、无 redis（模板无对应段，状态落 data/projects.json）。
-    - project: ha-services-deployer
+    - project: ha-cupbearer
       kind: required
   migration:
     # 无数据库，无迁移机制。
@@ -83,7 +83,7 @@ container:
   # compose 平台冒烟全过，前端已内嵌构建）。镜像为 linux/amd64 +
   # linux/arm64 多架构 manifest list，digest 钉的是 manifest list 摘要
   #（非单平台子摘要），为生效引用，tag 仅可读别名。
-  # 部署时 Deployer 按 digest 优先真实拉取本镜像
+  # 部署时 Cupbearer 按 digest 优先真实拉取本镜像
   #（鉴权沿用宿主 docker 登录态；拉后摘要对照不符即响亮失败）。
   image:
     source: registry

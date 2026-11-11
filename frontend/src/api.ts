@@ -1,5 +1,5 @@
 // 与后端代理层（internal/models/orchestration.go）一一对齐的类型定义。
-// 上游形状以 HA-Services-Deployer 编排端点实际实现为准；本文件只做镜像，
+// 上游形状以 HA-Cupbearer 编排端点实际实现为准；本文件只做镜像，
 // 不臆测字段。
 
 export type SessionStatus = {

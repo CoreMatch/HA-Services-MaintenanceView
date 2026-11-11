@@ -6,7 +6,7 @@ import (
 	"net/http"
 	"regexp"
 
-	"HA-Services-MaintenanceView/internal/deployer"
+	"HA-Services-MaintenanceView/internal/cupbearer"
 	"HA-Services-MaintenanceView/internal/models"
 	"github.com/gin-gonic/gin"
 )
@@ -16,13 +16,13 @@ import (
 // MatchCoreArena-MaintenanceView knowledge 0008（后端持令牌 + 请求日志 +
 // 类型化错误翻译）。
 //
-// 上游端点与 HA-Services-Deployer 实际实现对齐（/api/v1/deploy/*，
+// 上游端点与 HA-Cupbearer 实际实现对齐（/api/v1/deploy/*，
 // 2026-11-08 对账）；形状见 internal/models/orchestration.go。
 
 var runIDPattern = regexp.MustCompile(`^[a-zA-Z0-9_-]+$`)
 
 // writeRawPassthrough 把上游 data 段原样放进本服务信封透传。
-func writeRawPassthrough(c *gin.Context, message string, raw json.RawMessage, uerr *deployer.UpstreamError) {
+func writeRawPassthrough(c *gin.Context, message string, raw json.RawMessage, uerr *cupbearer.UpstreamError) {
 	if uerr != nil {
 		writeUpstreamError(c, uerr)
 		return
@@ -46,7 +46,7 @@ func mustEnvelope(message string, raw json.RawMessage) []byte {
 // writeUpstreamError 把上游失败翻译成可读响应：
 // 传输失败 → 502；其余按上游状态码透传，保留错误码与上游 data 段
 //（如"校验失败拒绝运行"时的分项错误）。
-func writeUpstreamError(c *gin.Context, uerr *deployer.UpstreamError) {
+func writeUpstreamError(c *gin.Context, uerr *cupbearer.UpstreamError) {
 	if uerr == nil {
 		return
 	}
@@ -54,14 +54,14 @@ func writeUpstreamError(c *gin.Context, uerr *deployer.UpstreamError) {
 	if uerr.Transport {
 		c.JSON(http.StatusBadGateway, gin.H{
 			"success": false,
-			"message": "无法连接 Deployer：" + uerr.Message,
+			"message": "无法连接 Cupbearer：" + uerr.Message,
 		})
 		return
 	}
 
 	payload := gin.H{
 		"success":         false,
-		"message":         translateDeployerError(uerr),
+		"message":         translateCupbearerError(uerr),
 		"code":            uerr.Code,
 		"upstream_status": uerr.Status,
 	}
@@ -71,26 +71,26 @@ func writeUpstreamError(c *gin.Context, uerr *deployer.UpstreamError) {
 	c.JSON(uerr.Status, payload)
 }
 
-// translateDeployerError 把上游类型化错误翻译成可读消息，保留原码。
+// translateCupbearerError 把上游类型化错误翻译成可读消息，保留原码。
 // 未列出的回落到信封原文（不吞细节）。
-func translateDeployerError(uerr *deployer.UpstreamError) string {
+func translateCupbearerError(uerr *cupbearer.UpstreamError) string {
 	switch uerr.Status {
 	case http.StatusUnauthorized, http.StatusForbidden:
-		return fmt.Sprintf("Deployer 拒绝了请求：部署凭据缺失或无效（检查 MaintenanceView 配置 deployer.token）(HTTP %d)", uerr.Status)
+		return fmt.Sprintf("Cupbearer 拒绝了请求：部署凭据缺失或无效（检查 MaintenanceView 配置 cupbearer.token）(HTTP %d)", uerr.Status)
 	case http.StatusNotFound:
-		return fmt.Sprintf("Deployer 上没有该资源：运行记录不存在，或该 Deployer 版本尚未启用编排端点 (HTTP %d)", uerr.Status)
+		return fmt.Sprintf("Cupbearer 上没有该资源：运行记录不存在，或该 Cupbearer 版本尚未启用编排端点 (HTTP %d)", uerr.Status)
 	case http.StatusServiceUnavailable:
-		return fmt.Sprintf("Deployer 编排不可用：%s (HTTP %d)", uerr.Message, uerr.Status)
+		return fmt.Sprintf("Cupbearer 编排不可用：%s (HTTP %d)", uerr.Message, uerr.Status)
 	case http.StatusConflict:
-		return fmt.Sprintf("Deployer 拒绝了本次触发：%s (HTTP %d)", uerr.Message, uerr.Status)
+		return fmt.Sprintf("Cupbearer 拒绝了本次触发：%s (HTTP %d)", uerr.Message, uerr.Status)
 	}
 	if uerr.Message == "" {
-		return fmt.Sprintf("Deployer 请求失败 (HTTP %d)", uerr.Status)
+		return fmt.Sprintf("Cupbearer 请求失败 (HTTP %d)", uerr.Status)
 	}
 	return fmt.Sprintf("%s (HTTP %d)", uerr.Message, uerr.Status)
 }
 
-// GetOrchestrationManifest 透传 Deployer 聚合 Manifest 视图。
+// GetOrchestrationManifest 透传 Cupbearer 聚合 Manifest 视图。
 func (h *Handler) GetOrchestrationManifest(c *gin.Context) {
 	raw, uerr := h.client.DeployManifestsRaw(c.Request.Context())
 	writeRawPassthrough(c, "deploy manifests fetched", raw, uerr)
@@ -144,7 +144,7 @@ func (h *Handler) TriggerDeploy(c *gin.Context) {
 	if !h.client.TokenConfigured() {
 		c.JSON(http.StatusServiceUnavailable, gin.H{
 			"success": false,
-			"message": "本实例未配置部署凭据（deployer.token），无法触发部署",
+			"message": "本实例未配置部署凭据（cupbearer.token），无法触发部署",
 		})
 		return
 	}
@@ -183,7 +183,7 @@ func (h *Handler) TriggerRollback(c *gin.Context) {
 	if !h.client.TokenConfigured() {
 		c.JSON(http.StatusServiceUnavailable, gin.H{
 			"success": false,
-			"message": "本实例未配置部署凭据（deployer.token），无法触发回滚",
+			"message": "本实例未配置部署凭据（cupbearer.token），无法触发回滚",
 		})
 		return
 	}
@@ -200,7 +200,7 @@ func (h *Handler) TriggerRollback(c *gin.Context) {
 // gateManagedProjects 对显式列出的项目做 manager 闸门：
 // 只有 manager == tinyvisor 的项目允许部署/回滚；aapanel/manual（面板或
 // 人工管理）与 external（外部依赖）一律拒绝——状态必须说实话，不能给
-// 操作员看似可用的入口。Projects 为空（= 全量）时由 Deployer 侧的
+// 操作员看似可用的入口。Projects 为空（= 全量）时由 Cupbearer 侧的
 // foreign 只读语义兜底。已拒绝时写入 409 响应并返回 true。
 func (h *Handler) gateManagedProjects(c *gin.Context, projects []string) bool {
 	if len(projects) == 0 {

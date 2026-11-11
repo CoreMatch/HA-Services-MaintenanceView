@@ -7,7 +7,7 @@ import (
 	"strings"
 	"testing"
 
-	"HA-Services-MaintenanceView/internal/deployer"
+	"HA-Services-MaintenanceView/internal/cupbearer"
 	"HA-Services-MaintenanceView/internal/models"
 	"HA-Services-MaintenanceView/internal/state"
 	"github.com/gin-gonic/gin"
@@ -17,9 +17,9 @@ func init() {
 	gin.SetMode(gin.TestMode)
 }
 
-// stubDeployer 按 HA-Services-Deployer 编排端点的实际契约
+// stubCupbearer 按 HA-Cupbearer 编排端点的实际契约
 //（/api/v1/deploy/*，X-Deploy-Token）提供最小实现。
-type stubDeployer struct {
+type stubCupbearer struct {
 	server           *httptest.Server
 	lastDeployToken  string
 	lastRollbackToken string
@@ -27,9 +27,9 @@ type stubDeployer struct {
 	deployRejectData json.RawMessage // 伴随拒绝响应的 data 段
 }
 
-func newStubDeployer(t *testing.T) *stubDeployer {
+func newStubCupbearer(t *testing.T) *stubCupbearer {
 	t.Helper()
-	stub := &stubDeployer{}
+	stub := &stubCupbearer{}
 
 	envelope := func(w http.ResponseWriter, data any) {
 		w.Header().Set("Content-Type", "application/json")
@@ -121,7 +121,7 @@ func newStubDeployer(t *testing.T) *stubDeployer {
 		envelope(w, map[string]any{"id": "run-1-rb", "type": "rollback", "state": "running"})
 	})
 	mux.HandleFunc("GET /api/v1/healthz", func(w http.ResponseWriter, r *http.Request) {
-		envelope(w, map[string]any{"service": "ha-services-deployer"})
+		envelope(w, map[string]any{"service": "ha-cupbearer"})
 	})
 
 	stub.server = httptest.NewServer(mux)
@@ -131,24 +131,24 @@ func newStubDeployer(t *testing.T) *stubDeployer {
 
 type testEnv struct {
 	router *gin.Engine
-	stub   *stubDeployer
+	stub   *stubCupbearer
 	cfg    *models.Config
 }
 
-// newTestEnv 组装 MV 路由。deployerToken 为空表示未配置运维身份：
+// newTestEnv 组装 MV 路由。cupbearerToken 为空表示未配置运维身份：
 // 免登录 + 变更端点 fail-closed。
-func newTestEnv(t *testing.T, deployerToken string) *testEnv {
+func newTestEnv(t *testing.T, cupbearerToken string) *testEnv {
 	t.Helper()
-	stub := newStubDeployer(t)
+	stub := newStubCupbearer(t)
 
 	cfg := models.DefaultConfig()
-	cfg.Deployer.BaseURL = stub.server.URL
-	cfg.Deployer.Token = deployerToken
+	cfg.Cupbearer.BaseURL = stub.server.URL
+	cfg.Cupbearer.Token = cupbearerToken
 	cfg.Server.FrontendDist = t.TempDir()
 
 	requestLog := NewRequestLog()
-	client := deployer.NewClient(cfg.Deployer.BaseURL)
-	client.SetToken(cfg.Deployer.Token)
+	client := cupbearer.NewClient(cfg.Cupbearer.BaseURL)
+	client.SetToken(cfg.Cupbearer.Token)
 	client.SetRecorder(requestLog)
 
 	store := state.NewStore(t.TempDir() + "/projects.json")
@@ -222,9 +222,9 @@ func TestConfigNeverLeaksTokens(t *testing.T) {
 		t.Fatalf("config response leaks token material: %s", body)
 	}
 	data := decodeData(t, recorder)
-	deployerCfg, _ := data["deployer"].(map[string]any)
-	if deployerCfg["token_configured"] != true {
-		t.Fatalf("token_configured should be true, got %v", deployerCfg["token_configured"])
+	cupbearerCfg, _ := data["cupbearer"].(map[string]any)
+	if cupbearerCfg["token_configured"] != true {
+		t.Fatalf("token_configured should be true, got %v", cupbearerCfg["token_configured"])
 	}
 	authCfg, _ := data["auth"].(map[string]any)
 	if authCfg["enabled"] != true {
@@ -300,7 +300,7 @@ func TestMutatingEndpointsRejectWithoutSession(t *testing.T) {
 		}
 	}
 	if env.stub.lastDeployToken != "" || env.stub.lastRollbackToken != "" {
-		t.Fatal("sessionless mutation must never reach the deployer")
+		t.Fatal("sessionless mutation must never reach the cupbearer")
 	}
 }
 
@@ -327,7 +327,7 @@ func TestDeployRejectsPanelManagedProject(t *testing.T) {
 		t.Fatalf("rejection reason missing: %s", recorder.Body.String())
 	}
 	if env.stub.lastDeployToken != "" {
-		t.Fatal("panel-managed project must never reach the deployer")
+		t.Fatal("panel-managed project must never reach the cupbearer")
 	}
 }
 
@@ -479,7 +479,7 @@ func TestUpstreamUnreachableIs502(t *testing.T) {
 	if recorder.Code != http.StatusBadGateway {
 		t.Fatalf("status = %d, want 502", recorder.Code)
 	}
-	if !strings.Contains(recorder.Body.String(), "无法连接 Deployer") {
+	if !strings.Contains(recorder.Body.String(), "无法连接 Cupbearer") {
 		t.Fatalf("missing readable message: %s", recorder.Body.String())
 	}
 }
@@ -512,11 +512,11 @@ func TestRequestLogRecordsProxiedCalls(t *testing.T) {
 	}
 }
 
-// --- 历史端点不回归 ---
+// --- 透传端点不回归 ---
 
-func TestLegacyDeployerHealthzKeepsFullEnvelope(t *testing.T) {
+func TestCupbearerHealthzKeepsFullEnvelope(t *testing.T) {
 	env := newTestEnv(t, "")
-	recorder := doJSON(t, env, http.MethodGet, "/api/deployer/healthz", "")
+	recorder := doJSON(t, env, http.MethodGet, "/api/cupbearer/healthz", "")
 	if recorder.Code != http.StatusOK {
 		t.Fatalf("status = %d", recorder.Code)
 	}

@@ -1,9 +1,9 @@
 package models
 
-// 本文件定义编排代理层使用的数据形状，与 HA-Services-Deployer 编排端点
+// 本文件定义编排代理层使用的数据形状，与 HA-Cupbearer 编排端点
 // 的实际实现对齐（internal/server/handlers_deploy.go、internal/orchestrator、
 // internal/manifest，2026-11-08 对账）。上游若再演进，只改本文件与
-// internal/deployer/client.go 两处。
+// internal/cupbearer/client.go 两处。
 
 // Manager 取值（manifest.ProcessSpec.Manager）：
 //   - tinyvisor — 编排器可驱动（唯一可部署/回滚的类别）；

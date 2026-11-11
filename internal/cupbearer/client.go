@@ -1,4 +1,4 @@
-package deployer
+package cupbearer
 
 import (
 	"bytes"
@@ -13,14 +13,14 @@ import (
 	"HA-Services-MaintenanceView/internal/models"
 )
 
-// RequestRecorder 记录每一次对 Deployer 的代理调用（元数据级，
+// RequestRecorder 记录每一次对 Cupbearer 的代理调用（元数据级，
 // 绝不记录请求头/凭据/请求体）。形态对齐 MatchCoreArena-MaintenanceView
 // knowledge 0008 的请求日志环形缓冲。
 type RequestRecorder interface {
 	Record(method, path string, status int, code string, ok bool)
 }
 
-// UpstreamError 是一次失败的 Deployer 调用：
+// UpstreamError 是一次失败的 Cupbearer 调用：
 // Transport=true 表示根本没拿到 HTTP 响应（网络/解析失败），
 // 否则 Status/Code/Message 来自上游响应；Data 保留上游错误信封里的
 // data 段（如校验分项错误），供代理层原样透传。
@@ -34,9 +34,9 @@ type UpstreamError struct {
 
 func (e *UpstreamError) Error() string {
 	if e.Transport {
-		return fmt.Sprintf("deployer unreachable: %s", e.Message)
+		return fmt.Sprintf("cupbearer unreachable: %s", e.Message)
 	}
-	return fmt.Sprintf("deployer returned HTTP %d (code %s): %s", e.Status, e.Code, e.Message)
+	return fmt.Sprintf("cupbearer returned HTTP %d (code %s): %s", e.Status, e.Code, e.Message)
 }
 
 type Client struct {
@@ -55,7 +55,7 @@ func NewClient(baseURL string) *Client {
 	}
 }
 
-// SetToken 配置 Deployer 变更端点的部署凭据。凭据只存在于服务端，
+// SetToken 配置 Cupbearer 变更端点的部署凭据。凭据只存在于服务端，
 // 仅用于出站请求头，绝不出现在任何日志或响应中。
 func (c *Client) SetToken(token string) {
 	c.token = token
@@ -90,7 +90,7 @@ func (c *Client) Projects(ctx context.Context) (*models.RemoteProjectsEnvelope, 
 	return &payload, nil
 }
 
-// --- 编排端点（与 Deployer 实际实现对齐：/api/v1/deploy/*，
+// --- 编排端点（与 Cupbearer 实际实现对齐：/api/v1/deploy/*，
 // 变更端点认 X-Deploy-Token 请求头） ---
 
 // DeployManifestsRaw 透传聚合 Manifest 视图的 data 段原始 JSON。
@@ -106,7 +106,7 @@ func (c *Client) DeployManifests(ctx context.Context) (*models.DeployManifests, 
 	}
 	var manifests models.DeployManifests
 	if err := json.Unmarshal(raw, &manifests); err != nil {
-		return nil, &UpstreamError{Transport: true, Message: "invalid manifests payload from deployer: " + err.Error()}
+		return nil, &UpstreamError{Transport: true, Message: "invalid manifests payload from cupbearer: " + err.Error()}
 	}
 	return &manifests, nil
 }
@@ -254,7 +254,7 @@ func (c *Client) doRaw(ctx context.Context, method, path string, body any, withA
 		Data json.RawMessage `json:"data"`
 	}
 	if err := json.Unmarshal(raw, &envelope); err != nil || envelope.Data == nil {
-		return nil, &UpstreamError{Transport: true, Message: "deployer response missing data field"}
+		return nil, &UpstreamError{Transport: true, Message: "cupbearer response missing data field"}
 	}
 	return envelope.Data, nil
 }
@@ -284,7 +284,7 @@ func (c *Client) record(method, path string, status int, code string, ok bool) {
 }
 
 // getEnvelope 保留历史行为：返回完整信封（含 success/message/data），
-// 供 /api/deployer/* 透传端点原样使用。
+// 供 /api/cupbearer/* 透传端点原样使用。
 func (c *Client) getEnvelope(ctx context.Context, path string) (map[string]any, error) {
 	req, err := http.NewRequestWithContext(ctx, http.MethodGet, c.baseURL+path, nil)
 	if err != nil {
@@ -308,7 +308,7 @@ func (c *Client) getEnvelope(ctx context.Context, path string) (map[string]any, 
 	c.record(http.MethodGet, path, resp.StatusCode, code, ok && resp.StatusCode < http.StatusBadRequest)
 
 	if resp.StatusCode >= http.StatusBadRequest {
-		return nil, fmt.Errorf("deployer request failed: %s", strings.TrimSpace(string(body)))
+		return nil, fmt.Errorf("cupbearer request failed: %s", strings.TrimSpace(string(body)))
 	}
 
 	var envelope map[string]any
@@ -327,7 +327,7 @@ func (c *Client) getData(ctx context.Context, path string, target any) error {
 
 	data, ok := envelope["data"]
 	if !ok {
-		return fmt.Errorf("deployer response missing data field")
+		return fmt.Errorf("cupbearer response missing data field")
 	}
 
 	raw, err := json.Marshal(data)

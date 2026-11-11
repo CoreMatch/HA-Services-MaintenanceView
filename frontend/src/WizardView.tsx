@@ -351,7 +351,7 @@ export default function WizardView() {
 
       {status && !status.deploy_token_configured ? (
         <Banner tone="warn">
-          Deployer 尚未配置部署凭据（deploy token）：预览可用，但一键执行会被后端拒绝（fail-closed）。
+          Cupbearer 尚未配置部署凭据（deploy token）：预览可用，但一键执行会被后端拒绝（fail-closed）。
         </Banner>
       ) : null}
 
@@ -424,7 +424,7 @@ export default function WizardView() {
               </Field>
               <p className="text-sm text-ink-faint">
                 库名、应用账号、客户端 id、内部地址等默认值由后端按生态约定推导；如需覆盖请直接调用
-                Deployer 的 /api/v1/deploy/bootstrap/run 提交完整输入。
+                Cupbearer 的 /api/v1/deploy/bootstrap/run 提交完整输入。
               </p>
             </Inset>
           </CollapsibleContent>

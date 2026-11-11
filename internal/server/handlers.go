@@ -10,7 +10,7 @@ import (
 	"strings"
 	"time"
 
-	"HA-Services-MaintenanceView/internal/deployer"
+	"HA-Services-MaintenanceView/internal/cupbearer"
 	"HA-Services-MaintenanceView/internal/models"
 	"HA-Services-MaintenanceView/internal/state"
 	"github.com/gin-gonic/gin"
@@ -18,13 +18,13 @@ import (
 
 type Handler struct {
 	cfg        *models.Config
-	client     *deployer.Client
+	client     *cupbearer.Client
 	store      *state.Store
 	sessions   *SessionStore
 	requestLog *RequestLog
 }
 
-func NewHandler(cfg *models.Config, client *deployer.Client, store *state.Store, sessions *SessionStore, requestLog *RequestLog) *Handler {
+func NewHandler(cfg *models.Config, client *cupbearer.Client, store *state.Store, sessions *SessionStore, requestLog *RequestLog) *Handler {
 	return &Handler{
 		cfg:        cfg,
 		client:     client,
@@ -46,19 +46,19 @@ func (h *Handler) Healthz(c *gin.Context) {
 }
 
 // GetConfig 返回脱敏后的配置视图。
-// 部署凭据（deployer.token）只允许留在服务端，这里仅回显布尔状态，
+// 部署凭据（cupbearer.token）只允许留在服务端，这里仅回显布尔状态，
 // 绝不回显明文。面板登录复用同一凭据，因此 auth.enabled 与
 // token_configured 同源。
 func (h *Handler) GetConfig(c *gin.Context) {
-	tokenConfigured := h.cfg.Deployer.Token != ""
+	tokenConfigured := h.cfg.Cupbearer.Token != ""
 	c.JSON(http.StatusOK, gin.H{
 		"success": true,
 		"message": "config loaded",
 		"data": gin.H{
 			"version": h.cfg.Version,
 			"server":  h.cfg.Server,
-			"deployer": gin.H{
-				"base_url":         h.cfg.Deployer.BaseURL,
+			"cupbearer": gin.H{
+				"base_url":         h.cfg.Cupbearer.BaseURL,
 				"token_configured": tokenConfigured,
 			},
 			"state": h.cfg.State,
@@ -69,12 +69,12 @@ func (h *Handler) GetConfig(c *gin.Context) {
 	})
 }
 
-func (h *Handler) GetDeployerHealthz(c *gin.Context) {
+func (h *Handler) GetCupbearerHealthz(c *gin.Context) {
 	data, err := h.client.Healthz(c.Request.Context())
 	if err != nil {
 		c.JSON(http.StatusBadGateway, gin.H{
 			"success": false,
-			"message": "failed to reach deployer health endpoint",
+			"message": "failed to reach cupbearer health endpoint",
 			"error":   err.Error(),
 		})
 		return
@@ -82,17 +82,17 @@ func (h *Handler) GetDeployerHealthz(c *gin.Context) {
 
 	c.JSON(http.StatusOK, gin.H{
 		"success": true,
-		"message": "deployer health fetched",
+		"message": "cupbearer health fetched",
 		"data":    data,
 	})
 }
 
-func (h *Handler) GetDeployerManifest(c *gin.Context) {
+func (h *Handler) GetCupbearerManifest(c *gin.Context) {
 	data, err := h.client.Manifest(c.Request.Context())
 	if err != nil {
 		c.JSON(http.StatusBadGateway, gin.H{
 			"success": false,
-			"message": "failed to reach deployer manifest endpoint",
+			"message": "failed to reach cupbearer manifest endpoint",
 			"error":   err.Error(),
 		})
 		return
@@ -100,7 +100,7 @@ func (h *Handler) GetDeployerManifest(c *gin.Context) {
 
 	c.JSON(http.StatusOK, gin.H{
 		"success": true,
-		"message": "deployer manifest fetched",
+		"message": "cupbearer manifest fetched",
 		"data":    data,
 	})
 }
@@ -159,7 +159,7 @@ func (h *Handler) SaveProjectDeployment(c *gin.Context) {
 	if err != nil {
 		c.JSON(http.StatusBadGateway, gin.H{
 			"success": false,
-			"message": "failed to validate project against deployer",
+			"message": "failed to validate project against cupbearer",
 			"error":   err.Error(),
 		})
 		return
@@ -168,7 +168,7 @@ func (h *Handler) SaveProjectDeployment(c *gin.Context) {
 	if !hasProject(remote.Projects, projectName) {
 		c.JSON(http.StatusNotFound, gin.H{
 			"success": false,
-			"message": "project not found in deployer list",
+			"message": "project not found in cupbearer list",
 		})
 		return
 	}
@@ -234,7 +234,7 @@ func (h *Handler) RunProjectPrecheck(c *gin.Context) {
 	if err != nil {
 		c.JSON(http.StatusBadGateway, gin.H{
 			"success": false,
-			"message": "failed to load deployer projects",
+			"message": "failed to load cupbearer projects",
 			"error":   err.Error(),
 		})
 		return
@@ -305,7 +305,7 @@ func (h *Handler) InitializeProject(c *gin.Context) {
 	if err != nil {
 		c.JSON(http.StatusBadGateway, gin.H{
 			"success": false,
-			"message": "failed to load deployer projects",
+			"message": "failed to load cupbearer projects",
 			"error":   err.Error(),
 		})
 		return
@@ -436,7 +436,7 @@ func (h *Handler) buildProjectViews(ctx context.Context) ([]models.ProjectView, 
 				ID:           artifact.ID,
 				FileName:     artifact.FileName,
 				DownloadPath: artifact.DownloadPath,
-				DownloadURL:  buildDownloadURL(h.cfg.Deployer.BaseURL, project.Name, artifact.DownloadPath),
+				DownloadURL:  buildDownloadURL(h.cfg.Cupbearer.BaseURL, project.Name, artifact.DownloadPath),
 				SHA256:       artifact.SHA256,
 				SizeBytes:    artifact.SizeBytes,
 				OS:           artifact.OS,

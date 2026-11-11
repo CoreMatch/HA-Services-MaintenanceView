@@ -67,15 +67,15 @@ func (s *SessionStore) Revoke(id string) {
 
 // authEnabled 报告面板会话鉴权是否启用。
 // 作者决策：复用既有运维身份（部署凭据）做登录验证，不为面板另起账号
-// 体系。因此"是否配置了 deployer.token"同时决定：登录是否必需、变更
+// 体系。因此"是否配置了 cupbearer.token"同时决定：登录是否必需、变更
 // 代理是否可用。未配置时保持历史行为：免登录（界面显示醒目提示），
 // 变更端点 fail-closed。
 func (h *Handler) authEnabled() bool {
-	return h.cfg.Deployer.Token != ""
+	return h.cfg.Cupbearer.Token != ""
 }
 
 // loopbackTrusted 报告当前请求是否享受回环免登录：仅当配置开启
-// loopback_session（Deployer 自启的受管形态）且对端确为回环地址。
+// loopback_session（Cupbearer 自启的受管形态）且对端确为回环地址。
 // 面板被钉在 127.0.0.1，回环信任等价于本机操作员；部署凭据仍由服务端
 // 持有转发，浏览器不接触凭据，安全边界不变。
 func (h *Handler) loopbackTrusted(c *gin.Context) bool {
@@ -154,7 +154,7 @@ func (h *Handler) SessionLogin(c *gin.Context) {
 		return
 	}
 
-	if subtle.ConstantTimeCompare([]byte(input.Token), []byte(h.cfg.Deployer.Token)) != 1 {
+	if subtle.ConstantTimeCompare([]byte(input.Token), []byte(h.cfg.Cupbearer.Token)) != 1 {
 		c.JSON(http.StatusUnauthorized, gin.H{
 			"success": false,
 			"message": "operator token rejected",

@@ -6,13 +6,13 @@ import (
 	"path/filepath"
 	"strings"
 
-	"HA-Services-MaintenanceView/internal/deployer"
+	"HA-Services-MaintenanceView/internal/cupbearer"
 	"HA-Services-MaintenanceView/internal/models"
 	"HA-Services-MaintenanceView/internal/state"
 	"github.com/gin-gonic/gin"
 )
 
-func NewRouter(cfg *models.Config, client *deployer.Client, store *state.Store, sessions *SessionStore, requestLog *RequestLog) *gin.Engine {
+func NewRouter(cfg *models.Config, client *cupbearer.Client, store *state.Store, sessions *SessionStore, requestLog *RequestLog) *gin.Engine {
 	router := gin.Default()
 	handler := NewHandler(cfg, client, store, sessions, requestLog)
 
@@ -36,8 +36,8 @@ func NewRouter(cfg *models.Config, client *deployer.Client, store *state.Store, 
 		api.PUT("/projects/:name/deployment", handler.SaveProjectDeployment)
 		api.POST("/projects/:name/precheck", handler.RunProjectPrecheck)
 		api.POST("/projects/:name/initialize", handler.InitializeProject)
-		api.GET("/deployer/healthz", handler.GetDeployerHealthz)
-		api.GET("/deployer/manifest", handler.GetDeployerManifest)
+		api.GET("/cupbearer/healthz", handler.GetCupbearerHealthz)
+		api.GET("/cupbearer/manifest", handler.GetCupbearerManifest)
 		api.GET("/request-log", handler.GetRequestLog)
 
 		orchestration := api.Group("/orchestration")
@@ -51,7 +51,7 @@ func NewRouter(cfg *models.Config, client *deployer.Client, store *state.Store, 
 			orchestration.POST("/rollback", handler.TriggerRollback)
 		}
 
-		// 首次运行初始化向导（一键开荒）：透传 Deployer bootstrap 层。
+		// 首次运行初始化向导（一键开荒）：透传 Cupbearer bootstrap 层。
 		bootstrap := api.Group("/bootstrap")
 		{
 			bootstrap.GET("/status", handler.GetBootstrapStatus)
