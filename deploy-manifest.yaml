@@ -88,5 +88,5 @@ container:
   image:
     source: registry
     repo: limeight/ha-services-maintenance-view
-    tag: "4567105"
-    digest: "sha256:52ee8d3d1a0af9695f815870b0f25ecbef2e9141c8e65735585750ed414b908a"
+    tag: "9bab5ae"
+    digest: "sha256:94145305fdd6c797fb7bdb227351d253086677bd8c52a58aead45e689de235d3"
