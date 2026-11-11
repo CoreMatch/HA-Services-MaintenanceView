@@ -1,6 +1,11 @@
+<!-- anchor-policy: archival -->
 # 0006 — Open Gaps and Direction
 
 ## Status
+
+Archival snapshot (2026-11-12): the legacy per-project bootstrap UI
+(`frontend/src/BootstrapView.tsx`) was removed; its successor is the one-click
+initialization wizard — see 0008. Anchors demoted to plain text per archival policy.
 
 Accepted (internal gap inventory; nothing here is a commitment or contract)
 
@@ -20,23 +25,23 @@ Record the gaps as-is.
 1. **Artifact download / install / update flow of this service's own.** No
    backend code here fetches an artifact from the deployer, replaces a
    binary, or restarts anything directly (0001). The legacy bootstrap page
-   only links out (`frontend/src/BootstrapView.tsx::download_url`); binary
+   only links out (`frontend/src/BootstrapView.tsx (download_url)`); binary
    lifecycle is delegated to HA-Services-Deployer's orchestration endpoints
-   via the proxy (`internal/server/handlers_orchestration.go::TriggerDeploy`).
+   via the proxy (`internal/server/handlers_orchestration.go (TriggerDeploy)`).
 2. **Content verification.** sha256/size are displayed but never checked
    (0001). This mirrors the deployer-side gap (HA-Services-Deployer
    knowledge base 0003): today no component verifies artifact bytes.
 3. **Direct process management.** This service still performs no
    start/stop/restart/status itself; it proxies the Deployer orchestrator,
    which drives Tinyvisor
-   (`internal/server/handlers_orchestration.go::GetOrchestrationStatus`).
+   (`internal/server/handlers_orchestration.go (GetOrchestrationStatus)`).
 4. **Multi-artifact selection.** Only `artifacts[0]` is ever considered
-   (`internal/server/handlers.go::selectProjectArtifact`,
-   `frontend/src/BootstrapView.tsx::runPrecheck`).
+   (`internal/server/handlers.go (selectProjectArtifact)`,
+   `frontend/src/BootstrapView.tsx (runPrecheck)`).
 5. **Bootstrap coverage.** 3 services have specs; the rest of the platform
    (haskinlib, winnerproxy, mca-server, ha-webui-sdkhandler,
    ha-services-deployer, this service itself) has none
-   (`internal/server/bootstrap_specs.go::bootstrapSpecs`).
+   (`internal/server/bootstrap_specs.go (bootstrapSpecs)`).
 
 ### Questions pending author confirmation
 
@@ -59,8 +64,8 @@ Record the gaps as-is.
   existing ops identity), the proxy injects the token into outbound Deployer
   mutation requests, `GET /api/config` is redacted, and mutation endpoints
   fail closed when the token is unset
-  (`internal/server/auth.go::authMiddleware`,
-  `internal/server/handlers_orchestration.go::TriggerDeploy`).
+  (`internal/server/auth.go (authMiddleware)`,
+  `internal/server/handlers_orchestration.go (TriggerDeploy)`).
 - **Docs (2026-11-08):** the README API skeleton now lists every route,
   including the deployment PUT route and the orchestration/session surface.
 
@@ -74,8 +79,8 @@ Record the gaps as-is.
 ## Evidence
 
 - Cross-references: 0001 (inventory), 0002 (data flow), 0003 (bootstrap limits), 0004 (permissions), 0005 (config drift).
-- `internal/server/router.go::NewRouter` — full route table (session
+- `internal/server/router.go (NewRouter)` — full route table (session
   middleware guards the routes registered after it when `deployer.token`
   is configured).
-- `internal/server/handlers.go::selectProjectArtifact` — first-artifact default.
-- `internal/server/bootstrap_specs.go::bootstrapSpecs` — three specs only.
+- `internal/server/handlers.go (selectProjectArtifact)` — first-artifact default.
+- `internal/server/bootstrap_specs.go (bootstrapSpecs)` — three specs only.

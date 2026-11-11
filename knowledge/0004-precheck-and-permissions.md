@@ -1,6 +1,11 @@
+<!-- anchor-policy: archival -->
 # 0004 — Precheck and Permissions
 
 ## Status
+
+Archival snapshot (2026-11-12): the legacy per-project bootstrap UI
+(`frontend/src/BootstrapView.tsx`) was removed; its successor is the one-click
+initialization wizard — see 0008. Anchors demoted to plain text per archival policy.
 
 Accepted — the 0777 permission behavior is **confirmed by the author as
 deliberate convenience for single-operator self-hosting**,
@@ -14,17 +19,17 @@ name suggests broader checks; the implementation is narrow.
 
 ## Decision
 
-Record exactly what precheck does (`internal/server/handlers.go::runPrecheck`):
+Record exactly what precheck does (`internal/server/handlers.go (runPrecheck)`):
 
 1. Requires `deploy_dir` to be saved for the project
-   (`internal/server/handlers.go::RunProjectPrecheck`).
+   (`internal/server/handlers.go (RunProjectPrecheck)`).
 2. If the deploy directory does not exist, creates it with mode `0777`
-   (`internal/server/handlers.go::runPrecheck`).
+   (`internal/server/handlers.go (runPrecheck)`).
 3. `chmod`s the deploy directory to `0777` unconditionally
-   (`internal/server/handlers.go::runPrecheck`).
+   (`internal/server/handlers.go (runPrecheck)`).
 4. If `<deploy_dir>/<artifact.file_name>` exists, `chmod`s it to `0777`
-   (`internal/server/handlers.go::runPrecheck`); otherwise reports that the
-   file does not exist yet (`internal/server/handlers.go::runPrecheck`).
+   (`internal/server/handlers.go (runPrecheck)`); otherwise reports that the
+   file does not exist yet (`internal/server/handlers.go (runPrecheck)`).
 5. Returns before/after modes and a message; nothing else.
 
 It does **not**: download anything, verify sha256 or size, check disk space,
@@ -54,14 +59,14 @@ check the running platform, or validate the artifact against the manifest.
   depends on the operator downloading the binary manually from the link the
   UI shows (see 0001).
 - The precheck result is displayed verbatim in the UI
-  (`frontend/src/BootstrapView.tsx::directory_mode_before`).
+  (`frontend/src/BootstrapView.tsx (directory_mode_before)`).
 
 ## Evidence
 
-- `internal/server/handlers.go::RunProjectPrecheck` — precheck handler.
-- `internal/server/handlers.go::runPrecheck` — implementation (mode `0o777`
+- `internal/server/handlers.go (RunProjectPrecheck)` — precheck handler.
+- `internal/server/handlers.go (runPrecheck)` — implementation (mode `0o777`
   passed to `os.MkdirAll` and to both `os.Chmod` calls).
-- `internal/models/project.go::UpdatePrecheckResult` — result shape.
-- `frontend/src/BootstrapView.tsx::runPrecheck`,
-  `frontend/src/BootstrapView.tsx::directory_mode_before` — UI trigger and
+- `internal/models/project.go (UpdatePrecheckResult)` — result shape.
+- `frontend/src/BootstrapView.tsx (runPrecheck)`,
+  `frontend/src/BootstrapView.tsx (directory_mode_before)` — UI trigger and
   rendering (legacy bootstrap page).
