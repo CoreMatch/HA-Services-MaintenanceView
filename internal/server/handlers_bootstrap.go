@@ -11,7 +11,7 @@ import (
 
 // 首次运行初始化向导的代理层：浏览器只调用本进程，部署凭据由本进程注入
 // 出站请求（X-Deploy-Token），绝不下发到前端。上游为 HA-Cupbearer
-// 的 /api/v1/deploy/bootstrap/*（契约 ha-cupbearer.yaml v1.3.0）。
+// 的 /api/v1/deploy/bootstrap/*（契约 ha-cupbearer.yaml v1.7.0）。
 // 风格与编排代理（handlers_orchestration.go）一致：原样透传 data 段 +
 // 类型化错误翻译。
 
@@ -65,6 +65,17 @@ func (h *Handler) PostBootstrapInfraRedis(c *gin.Context) {
 	}
 	raw, uerr := h.client.BootstrapInfraRedis(c.Request.Context(), json.RawMessage(body))
 	writeRawPassthrough(c, "redis ensured", raw, uerr)
+}
+
+// PostBootstrapCredentialHints 透传凭据预填提示（契约 1.7.0；只读。
+// 明文仅在上游判定"本工具生成且可追溯、验证通过"时出现，上游记审计）。
+func (h *Handler) PostBootstrapCredentialHints(c *gin.Context) {
+	body, ok := readBootstrapInputs(c)
+	if !ok {
+		return
+	}
+	raw, uerr := h.client.BootstrapCredentialHints(c.Request.Context(), json.RawMessage(body))
+	writeRawPassthrough(c, "credential hints fetched", raw, uerr)
 }
 
 // PostBootstrapPlan 透传 dry-run 计划（缺值时上游 400 携带分项人话错误）。

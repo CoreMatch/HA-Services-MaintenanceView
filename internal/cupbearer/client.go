@@ -171,6 +171,12 @@ func (c *Client) BootstrapInfraRedis(ctx context.Context, body any) (json.RawMes
 	return c.doRaw(ctx, http.MethodPost, "/api/v1/deploy/bootstrap/infra/redis", body, true)
 }
 
+// BootstrapCredentialHints 计算凭据预填提示（契约 1.7.0；只读，仅可追溯
+// 且验证通过的凭据回显明文，回显在上游记审计）。
+func (c *Client) BootstrapCredentialHints(ctx context.Context, body any) (json.RawMessage, *UpstreamError) {
+	return c.doRaw(ctx, http.MethodPost, "/api/v1/deploy/bootstrap/credential-hints", body, true)
+}
+
 // BootstrapPlan 透传 dry-run 计划（校验缺值，上游 400 携带分项人话错误）。
 func (c *Client) BootstrapPlan(ctx context.Context, inputs any) (json.RawMessage, *UpstreamError) {
 	return c.doRaw(ctx, http.MethodPost, "/api/v1/deploy/bootstrap/plan", inputs, true)

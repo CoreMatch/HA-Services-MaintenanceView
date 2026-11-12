@@ -272,6 +272,25 @@ export type PlanItem = { step: string; action: string; target: string; detail: s
 
 export type BootstrapPlan = { items: PlanItem[]; secrets: Record<string, string> };
 
+// 凭据预填提示（契约 1.7.0）：仅"本工具生成且可追溯、并对目标验证通过"的
+// 凭据才会携带 value；source 标明来源类别，provenance 指明具体出处。
+export type CredentialHint = {
+  target: "mysql_admin" | "app_user" | "redis";
+  account: string;
+  address: string;
+  found: boolean;
+  source: "managed_container_env" | "bootstrap_state" | "env_file" | "historical" | "none";
+  value?: string;
+  provenance?: string;
+  candidates_checked: number;
+  detail: string;
+};
+
+export type CredentialHintsReport = {
+  generated_at: string;
+  hints: CredentialHint[];
+};
+
 export type BootstrapStep = { name: string; status: string; detail?: string; updated_at: string };
 
 export type BootstrapRun = {
@@ -347,6 +366,13 @@ export const api = {
       method: "POST",
       body: JSON.stringify(body ?? {}),
     }),
+  bootstrapCredentialHints: async (body: unknown) => {
+    const report = await requestEnvelope<CredentialHintsReport>("/api/bootstrap/credential-hints", {
+      method: "POST",
+      body: JSON.stringify(body ?? {}),
+    });
+    return { ...report, hints: report.hints ?? [] };
+  },
   bootstrapPlan: (inputs: unknown) =>
     requestEnvelope<BootstrapPlan>("/api/bootstrap/plan", {
       method: "POST",

@@ -75,6 +75,7 @@ func NewRouter(cfg *models.Config, client *cupbearer.Client, store *state.Store,
 			bootstrap.GET("/infra", handler.GetBootstrapInfra)
 			bootstrap.POST("/infra/mysql", handler.PostBootstrapInfraMySQL)
 			bootstrap.POST("/infra/redis", handler.PostBootstrapInfraRedis)
+			bootstrap.POST("/credential-hints", handler.PostBootstrapCredentialHints)
 			bootstrap.POST("/plan", handler.PostBootstrapPlan)
 			bootstrap.POST("/run", handler.PostBootstrapRun)
 			bootstrap.GET("/runs", handler.GetBootstrapRuns)

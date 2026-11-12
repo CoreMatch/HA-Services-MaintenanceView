@@ -74,10 +74,29 @@ when it is used, and how to fill it for local practice; production replaces
 them with real domains. If a template port ever changes, update
 `PUBLIC_URL_FIELDS` and this entry together.
 
+Password fields prefill under the same "fill empty fields only" discipline
+when adopting/reusing pre-existing instances (contract 1.7.0). On step load
+the wizard asks `POST /api/bootstrap/credential-hints` (proxied like the
+other bootstrap endpoints, deploy-token injected server-side) and prefills
+the reuse existing-password, the advanced MySQL admin password, and the
+advanced Redis password — each only when the backend found a credential THIS
+tool generated and can still trace, verified against the target account.
+Every prefilled field shows a source badge
+(`frontend/src/wizard/BootstrapStep.tsx::CredentialHintNote`; managed
+container env / this instance's state / this instance's `.env` / historical
+artifacts, with the concrete provenance); the
+badge disappears once the value is edited. When nothing traceable is found
+the fields show contextual copy instead of staying blank (managed-but-
+unreadable vs external-instance), and the infra cards carry the same notes.
+A "重新探测凭据预填" button re-runs the detection after target-address
+changes. The backend never echoes external/unverifiable passwords and
+audit-logs every plaintext echo (semantics normative in HA-Cupbearer
+`knowledge/0016-first-run-bootstrap-mv-autostart-infra.md`).
+
 ### Proxy layer (`internal/server/handlers_bootstrap.go`)
 
 `/api/bootstrap/*` mirrors the Cupbearer's `/api/v1/deploy/bootstrap/*`
-(contract: ha-cupbearer.yaml v1.3.0) with the established pattern:
+(contract: ha-cupbearer.yaml v1.7.0) with the established pattern:
 server-side token injection (`X-Deploy-Token`), raw `data` passthrough,
 typed upstream-error translation, request log metadata only. Infra one-click
 endpoints get a 5-minute client timeout (they wait for real readiness).
@@ -147,6 +166,8 @@ unchanged.
 ## Evidence
 
 - `frontend/src/WizardView.tsx` — wizard page.
+- `frontend/src/wizard/BootstrapStep.tsx::CredentialHintNote` — credential
+  prefill badge and contextual empty-state copy.
 - `internal/server/handlers_bootstrap.go` — proxy endpoints.
 - `internal/server/auth.go::loopbackTrusted` — loopback session gate.
 - `internal/models/config.go::ServerConfig.LoopbackSession` — config field.

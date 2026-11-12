@@ -21,6 +21,8 @@ import {
   type BootstrapPlan,
   type BootstrapRun,
   type BootstrapStatus,
+  type CredentialHint,
+  type CredentialHintsReport,
 } from "../api";
 import type { DbPolicy, DeployPath, WizardState } from "./state";
 
@@ -160,6 +162,50 @@ function classifyUrl(value: string): "empty" | "invalid" | "local" | "public" {
   }
 }
 
+// 凭据预填（契约 1.7.0）：后端只回显"本工具生成且可追溯、并对目标验证
+// 通过"的明文（每次回显在上游记审计）。前端纪律：只填空字段，人改过的
+// 值绝不覆盖；来源徽标只在当前值 == 预填值时显示（改过即消失）。
+const SOURCE_LABELS: Record<string, string> = {
+  managed_container_env: "受管容器 env",
+  bootstrap_state: "本实例状态",
+  env_file: "本实例 .env",
+  historical: "历史实例产物",
+  none: "无",
+};
+
+// 单个口令字段的预填附注：有预填且值未被改动 → 来源徽标；无可追溯来源
+// 且字段为空 → 情境化提示（受管但不可读 / 外部实例），不留纯空格子。
+function CredentialHintNote({ hint, currentValue }: { hint?: CredentialHint; currentValue: string }) {
+  if (!hint) return null;
+  if (hint.found && hint.value && currentValue === hint.value) {
+    return (
+      <div className="mt-1 flex flex-wrap items-center gap-2 text-xs">
+        <Badge tone="ok">已自动预填 · 对目标验证通过</Badge>
+        <span className="text-ink-faint">
+          来源：{SOURCE_LABELS[hint.source] ?? hint.source}
+          {hint.provenance ? ` — ${hint.provenance}` : ""}
+        </span>
+      </div>
+    );
+  }
+  if (!hint.found && !currentValue.trim()) {
+    return <div className="mt-1 text-xs text-ink-muted">{hint.detail}</div>;
+  }
+  return null;
+}
+
+// 口令预填取值：字段已有值（人填过/已持久化）绝不覆盖；仅空字段取
+// "找到且验证通过"的预填值。
+function prefillPassword(
+  current: string,
+  rep: CredentialHintsReport | null,
+  target: CredentialHint["target"]
+): string {
+  if (current.trim()) return current;
+  const hint = rep?.hints.find((h) => h.target === target);
+  return hint?.found && hint.value ? hint.value : current;
+}
+
 function actionTone(action: string): BadgeTone {
   switch (action) {
     case "generate":
@@ -198,10 +244,12 @@ function InfraCard({
   inst,
   busy,
   onLaunch,
+  hint,
 }: {
   inst: BootstrapInfraInstance;
   busy: boolean;
   onLaunch: () => void;
+  hint?: CredentialHint;
 }) {
   const name = inst.kind === "mysql" ? "MySQL" : "Redis";
   const modeBadge =
@@ -248,6 +296,19 @@ function InfraCard({
           <div>尚未可用。点"一键拉起"自动生成凭据、拉起容器并等待真正可用；所选部署路径按对应形态连接。</div>
         )}
         {inst.detail ? <div className="text-ink-faint">{inst.detail}</div> : null}
+        {hint ? (
+          hint.found && hint.value ? (
+            <div className="flex flex-wrap items-center gap-2">
+              <Badge tone="ok">凭据已识别 · 验证通过</Badge>
+              <span>
+                来源：{SOURCE_LABELS[hint.source] ?? hint.source}
+                {hint.provenance ? ` — ${hint.provenance}` : ""}
+              </span>
+            </div>
+          ) : (
+            <div>{hint.detail}</div>
+          )
+        ) : null}
       </Inset>
     </Panel>
   );
@@ -277,6 +338,10 @@ export default function BootstrapStep({
   const [actionError, setActionError] = useState<string | null>(null);
   const [launchingMysql, setLaunchingMysql] = useState(false);
   const [launchingRedis, setLaunchingRedis] = useState(false);
+  // 凭据预填（契约 1.7.0）：后端按三类可追溯来源判定并验证后的结论。
+  // null = 尚未探测或探测失败（不阻塞向导，只是没有预填）。
+  const [hints, setHints] = useState<CredentialHint[] | null>(null);
+  const [hintsBusy, setHintsBusy] = useState(false);
   const pollRef = useRef<number | null>(null);
 
   const targets = useMemo(
@@ -284,18 +349,65 @@ export default function BootstrapStep({
     [path]
   );
 
+  // 预填探测请求体：只给目标定位字段（管理口地址/账号、Redis 端口），
+  // 缺省由后端按默认推导。
+  function hintsRequestBody() {
+    const database: Record<string, unknown> = {};
+    if (inputs.adminHost.trim()) database.admin_host = inputs.adminHost.trim();
+    if (inputs.adminPort.trim()) database.admin_port = Number(inputs.adminPort.trim());
+    if (inputs.adminUser.trim()) database.admin_user = inputs.adminUser.trim();
+    const redis: Record<string, unknown> = {};
+    if (inputs.redisHostPort.trim()) redis.port = Number(inputs.redisHostPort.trim());
+    const body: Record<string, unknown> = {};
+    if (Object.keys(database).length > 0) body.database = database;
+    if (Object.keys(redis).length > 0) body.redis = redis;
+    return body;
+  }
+
+  // 重新探测预填（人改过高级区的目标地址后手动触发；仍只填空字段）。
+  async function refreshHints() {
+    setHintsBusy(true);
+    try {
+      const rep = await api.bootstrapCredentialHints(hintsRequestBody());
+      setHints(rep.hints);
+      onInputsChange({
+        ...inputs,
+        existingPassword: prefillPassword(inputs.existingPassword, rep, "app_user"),
+        adminPassword: prefillPassword(inputs.adminPassword, rep, "mysql_admin"),
+        redisPassword: prefillPassword(inputs.redisPassword, rep, "redis"),
+      });
+    } catch {
+      // 探测失败不阻塞向导：保留现值，只是没有预填。
+    } finally {
+      setHintsBusy(false);
+    }
+  }
+
+  const hintByTarget = useMemo(() => {
+    const m: Partial<Record<CredentialHint["target"], CredentialHint>> = {};
+    for (const h of hints ?? []) m[h.target] = h;
+    return m;
+  }, [hints]);
+
   const loadAll = useCallback(async () => {
     setLoadError(null);
     try {
-      const [st, inf] = await Promise.all([api.bootstrapStatus(), api.bootstrapInfra()]);
+      // 预填探测失败不阻塞向导（例如尚未配置部署凭据）：只当作无预填。
+      const [st, inf, hintRep] = await Promise.all([
+        api.bootstrapStatus(),
+        api.bootstrapInfra(),
+        api.bootstrapCredentialHints(hintsRequestBody()).catch(() => null),
+      ]);
       setStatus(st);
       setInfra(inf);
+      setHints(hintRep ? hintRep.hints : null);
       // 输出路径预填：后端按清单推导优先；已有的人填值不覆盖。
       const files = st.defaults?.config_files ?? {};
       const outputs = st.defaults?.baremetal_outputs ?? {};
       // 对外地址预填：仅对空字段填入本机默认值（回环 + 模板默认端口）；
       // 已持久化 / 人改过的值一律不覆盖。与 bmOutputs 同一次提交，避免
       // 两次 onInputsChange 各自基于旧快照互相覆盖。
+      // 口令预填（契约 1.7.0）同理：只填空字段，来源见 hints 徽标。
       onInputsChange({
         ...inputs,
         bmOutputs: (() => {
@@ -314,6 +426,9 @@ export default function BootstrapStep({
           }
           return next;
         })(),
+        existingPassword: prefillPassword(inputs.existingPassword, hintRep, "app_user"),
+        adminPassword: prefillPassword(inputs.adminPassword, hintRep, "mysql_admin"),
+        redisPassword: prefillPassword(inputs.redisPassword, hintRep, "redis"),
       });
     } catch (err) {
       setLoadError(err instanceof Error ? err.message : String(err));
@@ -352,10 +467,14 @@ export default function BootstrapStep({
     if (inputs.dbPolicy === "reuse" && inputs.existingPassword.trim()) {
       database.existing_password = inputs.existingPassword.trim();
     }
+    // Redis 口令：仅在给出时下发（接管外部实例用；受管容器由后端生成）。
+    const redis: Record<string, unknown> = {};
+    if (inputs.redisPassword.trim()) redis.password = inputs.redisPassword.trim();
     return {
       targets,
       infra,
       database,
+      ...(Object.keys(redis).length > 0 ? { redis } : {}),
       public_urls: urls,
       paths: { baremetal_outputs: outputs },
     };
@@ -517,8 +636,18 @@ export default function BootstrapStep({
         </p>
         {infra ? (
           <div className="flex flex-wrap gap-4">
-            <InfraCard inst={infra.mysql} busy={launchingMysql} onLaunch={() => void launchInfra("mysql")} />
-            <InfraCard inst={infra.redis} busy={launchingRedis} onLaunch={() => void launchInfra("redis")} />
+            <InfraCard
+              inst={infra.mysql}
+              busy={launchingMysql}
+              onLaunch={() => void launchInfra("mysql")}
+              hint={hintByTarget.mysql_admin}
+            />
+            <InfraCard
+              inst={infra.redis}
+              busy={launchingRedis}
+              onLaunch={() => void launchInfra("redis")}
+              hint={hintByTarget.redis}
+            />
           </div>
         ) : (
           <Spinner size={20} />
@@ -526,12 +655,30 @@ export default function BootstrapStep({
       </section>
 
       <section>
-        <h3 className="mb-2 text-lg font-semibold text-ink">既有数据库的处置</h3>
+        <div className="mb-2 flex flex-wrap items-center justify-between gap-2">
+          <h3 className="text-lg font-semibold text-ink">既有数据库的处置</h3>
+          <Button variant="outline" size="sm" onClick={() => void refreshHints()} disabled={hintsBusy}>
+            {hintsBusy ? <Spinner size={14} /> : null}重新探测凭据预填
+          </Button>
+        </div>
         <p className="mb-3 text-sm text-ink-muted">
           初始化前会先探测目标库与应用账号是否已存在、本次凭据能否验证。只有当"应用账号已存在且口令不一致"
           （例如在这台机器上重新初始化、上次初始化中断后重来）时，下面的选择才生效；探测不到冲突时一律照常创建，
           选什么都不破坏。冲突已探测到而未做选择时，运行会明确失败、不改动任何数据库对象。
         </p>
+        {hintByTarget.app_user?.found ? (
+          <p className="mb-3 flex flex-wrap items-center gap-2 text-sm">
+            <Badge tone="ok">凭据预填可用</Badge>
+            <span className="text-ink-muted">
+              已找到既有账号 {hintByTarget.app_user.account} 的可追溯凭据（来源：
+              {SOURCE_LABELS[hintByTarget.app_user.source] ?? hintByTarget.app_user.source}
+              {hintByTarget.app_user.provenance ? ` — ${hintByTarget.app_user.provenance}` : ""}
+              ），并对目标验证通过；选择"沿用"时自动填入。
+            </span>
+          </p>
+        ) : hintByTarget.app_user && !hintByTarget.app_user.found ? (
+          <p className="mb-3 text-sm text-ink-faint">{hintByTarget.app_user.detail}</p>
+        ) : null}
         <div className="grid grid-cols-1 gap-4 md:grid-cols-3">
           {DB_POLICIES.map((option) => {
             const selected = inputs.dbPolicy === option.id;
@@ -576,6 +723,7 @@ export default function BootstrapStep({
                 onChange={(e) => onInputsChange({ ...inputs, existingPassword: e.target.value })}
                 placeholder="既有应用账号的当前口令"
               />
+              <CredentialHintNote hint={hintByTarget.app_user} currentValue={inputs.existingPassword} />
             </Field>
           </div>
         ) : null}
@@ -653,6 +801,7 @@ export default function BootstrapStep({
                     onChange={(e) => onInputsChange({ ...inputs, adminPassword: e.target.value })}
                     placeholder="留空 = 自动生成并一键拉起"
                   />
+                  <CredentialHintNote hint={hintByTarget.mysql_admin} currentValue={inputs.adminPassword} />
                 </Field>
                 <Field label="MySQL 宿主发布端口（探测/拉起用；留空 = 3306）">
                   <Input
@@ -667,6 +816,15 @@ export default function BootstrapStep({
                     onChange={(e) => onInputsChange({ ...inputs, redisHostPort: e.target.value })}
                     placeholder="6379"
                   />
+                </Field>
+                <Field label="Redis 口令（接管外部实例时填；受管容器自动生成；无口令留空）">
+                  <Input
+                    type="password"
+                    value={inputs.redisPassword}
+                    onChange={(e) => onInputsChange({ ...inputs, redisPassword: e.target.value })}
+                    placeholder="留空 = 无口令或由受管容器生成"
+                  />
+                  <CredentialHintNote hint={hintByTarget.redis} currentValue={inputs.redisPassword} />
                 </Field>
               </div>
               <label className="flex cursor-pointer items-center gap-3">
