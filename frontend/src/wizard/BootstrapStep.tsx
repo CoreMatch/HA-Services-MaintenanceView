@@ -64,16 +64,101 @@ const DB_POLICIES: {
   },
 ];
 
-type PublicUrlField = { key: string; label: string; placeholder: string };
+type PublicUrlField = {
+  key: string;
+  label: string;
+  // 属于哪个服务 / 什么场景用到 / 本地演练怎么填（向导里逐项展示）。
+  service: string;
+  usage: string;
+  localHint: string;
+  // 本机默认值：回环 + 该服务在配置模板里的默认端口。空字段会被预填成它；
+  // 人改过/已持久化的值绝不覆盖（另有一键"恢复默认"显式重置）。
+  // 留空 = 本机无此默认（显示占位提示，不拿假地址充数）。
+  defaultUrl: string;
+  placeholder: string;
+};
 
+// 六个对外地址的本机默认值，一律 = 回环 + 配置模板默认端口，不编造数字。
+// 端口的单一事实源（改动须同步这里与 knowledge/0008 的记载）：
+//   HA-Cupbearer/internal/bootstrap/render.go 变量字典 ——
+//   HRPAUTH_PORT=2778、YGG_PORT=2770、HASKINPROXY_PORT=2702、
+//   WINNERPROXY_PORT=2777、MAINTENANCEVIEW_PORT=18081、WEBUI_PORT=8080；
+//   与 HA-Cupbearer/deploy/.env.example、deploy/docker-compose.yml 的默认一致。
+// 生产部署把这些换成真实域名（可带反向代理路径，如 YGG 挂在 /yggdrasil-api）。
 const PUBLIC_URL_FIELDS: PublicUrlField[] = [
-  { key: "hrpauth", label: "HRPAuth 对外地址", placeholder: "https://ha.example.com" },
-  { key: "frontend", label: "账号门户前端地址", placeholder: "https://auth.example.com" },
-  { key: "ygg", label: "Yggdrasil-API 对外地址", placeholder: "https://ha.example.com/yggdrasil-api" },
-  { key: "haskinproxy", label: "HASkinProxy 对外地址", placeholder: "https://skin-proxy.example.com" },
-  { key: "winnerproxy", label: "WinnerProxy 对外地址", placeholder: "https://winner-proxy.example.com" },
-  { key: "maintenanceview", label: "运维面板对外地址", placeholder: "https://maintenance.example.com" },
+  {
+    key: "hrpauth",
+    label: "HRPAuth 对外地址",
+    service: "HRPAuth（账号 / 认证服务）",
+    usage: "OAuth issuer 与令牌签发、各服务经此校验身份",
+    localHint: "本机直连 2778 端口",
+    defaultUrl: "http://127.0.0.1:2778",
+    placeholder: "生产填真实域名，如 https://ha.example.com",
+  },
+  {
+    key: "frontend",
+    label: "账号门户前端地址",
+    service: "账号门户前端（WebUI，可选）",
+    usage: "玩家/用户访问的账号页；OAuth 登录回调落在这里（/oauth/callback）",
+    localHint: "本机 WebUI 默认 8080（compose 以 --profile webui 启用）",
+    defaultUrl: "http://127.0.0.1:8080",
+    placeholder: "生产填真实域名，如 https://auth.example.com",
+  },
+  {
+    key: "ygg",
+    label: "Yggdrasil-API 对外地址",
+    service: "Yggdrasil-API（YGG，会话 / 中继 API）",
+    usage: "客户端 / SDK 访问的会话与中继接口",
+    localHint: "本机直连 2770 端口（生产经反代挂域名路径时形如 /yggdrasil-api）",
+    defaultUrl: "http://127.0.0.1:2770",
+    placeholder: "生产填真实域名，如 https://ha.example.com/yggdrasil-api",
+  },
+  {
+    key: "haskinproxy",
+    label: "HASkinProxy 对外地址",
+    service: "HASkinProxy（皮肤代理）",
+    usage: "皮肤 / 材质资源的对外代理入口",
+    localHint: "本机直连 2702 端口",
+    defaultUrl: "http://127.0.0.1:2702",
+    placeholder: "生产填真实域名，如 https://skin-proxy.example.com",
+  },
+  {
+    key: "winnerproxy",
+    label: "WinnerProxy 对外地址",
+    service: "WinnerProxy（胜出 / 结果代理）",
+    usage: "对外结果与胜出回调代理",
+    localHint: "本机直连 2777 端口",
+    defaultUrl: "http://127.0.0.1:2777",
+    placeholder: "生产填真实域名，如 https://winner-proxy.example.com",
+  },
+  {
+    key: "maintenanceview",
+    label: "运维面板对外地址",
+    service: "MaintenanceView（本运维面板）",
+    usage: "面板自身的对外访问地址（public_base_url）",
+    localHint: "模板默认 18081；本套演练环境实际在 18605，按实填",
+    defaultUrl: "http://127.0.0.1:18081",
+    placeholder: "生产填真实域名，如 https://maintenance.example.com",
+  },
 ];
+
+// 判定一个对外地址的形态：空 / 非法 / 本机回环（演练）/ 公网域名。
+// 回环 + 端口是合法的本地演练形态，与公网域名走不同分支——别让"本地能跑"
+// 的人被域名格式校验挡住。
+function classifyUrl(value: string): "empty" | "invalid" | "local" | "public" {
+  const s = value.trim();
+  if (!s) return "empty";
+  if (!/^https?:\/\/.+/i.test(s)) return "invalid";
+  try {
+    const host = new URL(s).hostname;
+    if (host === "127.0.0.1" || host === "localhost" || host === "::1" || host === "[::1]" || host === "0.0.0.0") {
+      return "local";
+    }
+    return "public";
+  } catch {
+    return "invalid";
+  }
+}
 
 function actionTone(action: string): BadgeTone {
   switch (action) {
@@ -208,12 +293,24 @@ export default function BootstrapStep({
       // 输出路径预填：后端按清单推导优先；已有的人填值不覆盖。
       const files = st.defaults?.config_files ?? {};
       const outputs = st.defaults?.baremetal_outputs ?? {};
+      // 对外地址预填：仅对空字段填入本机默认值（回环 + 模板默认端口）；
+      // 已持久化 / 人改过的值一律不覆盖。与 bmOutputs 同一次提交，避免
+      // 两次 onInputsChange 各自基于旧快照互相覆盖。
       onInputsChange({
         ...inputs,
         bmOutputs: (() => {
           const next = { ...inputs.bmOutputs };
           for (const svc of Object.keys(files)) {
             if (!(svc in next) || !next[svc]) next[svc] = outputs[svc] ?? "";
+          }
+          return next;
+        })(),
+        urls: (() => {
+          const next = { ...inputs.urls };
+          for (const f of PUBLIC_URL_FIELDS) {
+            if ((!(f.key in next) || !next[f.key]?.trim()) && f.defaultUrl) {
+              next[f.key] = f.defaultUrl;
+            }
           }
           return next;
         })(),
@@ -264,14 +361,28 @@ export default function BootstrapStep({
     };
   }
 
+  // 一键恢复默认：把六个对外地址显式重置为本机默认值（回环 + 模板默认端口）。
+  // 与"仅填空"的自动预填不同，这是人的显式动作，会覆盖当前值。
+  function restoreDefaultUrls() {
+    const next: Record<string, string> = {};
+    for (const f of PUBLIC_URL_FIELDS) next[f.key] = f.defaultUrl;
+    onInputsChange({ ...inputs, urls: next });
+    setUrlErrors({});
+  }
+
   function validateLocally(): boolean {
     const errs: Record<string, string> = {};
     for (const f of PUBLIC_URL_FIELDS) {
-      const v = (inputs.urls[f.key] ?? "").trim();
-      if (!v) {
-        errs[f.key] = "必填：客户端/玩家要访问这个对外地址，空着服务起不来";
-      } else if (!/^https?:\/\/.+/i.test(v)) {
-        errs[f.key] = "需要带协议的完整 URL，例如 https://ha.example.com";
+      // 回环 + 端口（本地演练）与公网域名都合法，分支不同；只拦空值与非法格式。
+      switch (classifyUrl(inputs.urls[f.key] ?? "")) {
+        case "empty":
+          errs[f.key] = "必填：客户端/玩家要访问这个对外地址，空着服务起不来（本地演练可用已预填的回环地址）";
+          break;
+        case "invalid":
+          errs[f.key] = "需要带协议的完整 URL；本机演练形如 http://127.0.0.1:2778，生产形如 https://ha.example.com";
+          break;
+        default:
+          break; // local / public 均合法
       }
     }
     setUrlErrors(errs);
@@ -472,22 +583,39 @@ export default function BootstrapStep({
       </section>
 
       <section>
-        <h3 className="mb-2 text-lg font-semibold text-ink">对外地址（只有你知道）</h3>
+        <div className="mb-2 flex flex-wrap items-center justify-between gap-2">
+          <h3 className="text-lg font-semibold text-ink">对外地址（只有你知道）</h3>
+          <Button variant="outline" size="sm" onClick={restoreDefaultUrls}>
+            恢复默认（回环 + 模板端口）
+          </Button>
+        </div>
         <p className="mb-3 text-sm text-ink-muted">
           其余一切（全部密钥、库与账号、内部地址、签名密钥）都由后端自动生成/推导，无需填写。
-          本地演练可填回环+端口的占位地址，但必须是带协议的完整 URL。
+          下面六项已预填本机默认值——回环 + 各服务在配置模板里的默认端口（来源：Cupbearer
+          deploy/.env.example 与渲染模板，见向导说明）；生产部署请改成真实域名。
+          预填只补空字段，你改过的值不会被覆盖；回环 + 端口是合法的本地演练形态。
         </p>
         <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
-          {PUBLIC_URL_FIELDS.map((f) => (
-            <Field key={f.key} label={f.label}>
-              <Input
-                value={inputs.urls[f.key] ?? ""}
-                placeholder={f.placeholder}
-                onChange={(e) => onInputsChange({ ...inputs, urls: { ...inputs.urls, [f.key]: e.target.value } })}
-              />
-              {urlErrors[f.key] ? <div className="mt-1 text-sm text-danger">{urlErrors[f.key]}</div> : null}
-            </Field>
-          ))}
+          {PUBLIC_URL_FIELDS.map((f) => {
+            const kind = classifyUrl(inputs.urls[f.key] ?? "");
+            return (
+              <Field key={f.key} label={f.label}>
+                <Input
+                  value={inputs.urls[f.key] ?? ""}
+                  placeholder={f.defaultUrl ? f.placeholder : "本机无此默认——不适用可留空，生产按实填写"}
+                  onChange={(e) => onInputsChange({ ...inputs, urls: { ...inputs.urls, [f.key]: e.target.value } })}
+                />
+                <div className="mt-1 text-xs text-ink-faint">
+                  {f.service} · {f.usage}
+                </div>
+                <div className="text-xs text-ink-faint">本地演练：{f.localHint}</div>
+                {!urlErrors[f.key] && kind === "local" ? (
+                  <div className="mt-1 text-xs text-ink-muted">本地演练地址（回环），生产请换真实域名</div>
+                ) : null}
+                {urlErrors[f.key] ? <div className="mt-1 text-sm text-danger">{urlErrors[f.key]}</div> : null}
+              </Field>
+            );
+          })}
         </div>
 
         <Collapsible className="mt-4">

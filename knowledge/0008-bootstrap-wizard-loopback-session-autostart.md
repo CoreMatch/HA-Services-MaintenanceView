@@ -51,9 +51,26 @@ app-level keydown handler (`frontend/src/App.tsx`) that adopts the default
 action (preventDefault first, so normal browsers never double-fire).
 Client-side blocking: empty/invalid URLs
 show plain-language errors on submit attempt; server-side field errors
-(upstream 400 `data.field_errors`) render as a blocker list. Advanced
+(upstream 400 `data.field_errors`) render as a blocker list. URL validation
+branches on form (`frontend/src/wizard/BootstrapStep.tsx::classifyUrl`):
+loopback + port is a valid local-practice address (never blocked by a
+domain-format rule), distinct from a public domain. Advanced
 section collapsed (external-MySQL admin password; everything else
 backend-derived).
+
+The six public-URL fields prefill local defaults instead of opening empty
+(`BootstrapStep.tsx::PUBLIC_URL_FIELDS`): each default is loopback + the
+service's default port taken from the Cupbearer config templates — the
+single source of truth is HA-Cupbearer `internal/bootstrap/render.go`'s
+variable dictionary (`HRPAUTH_PORT=2778`, `YGG_PORT=2770`,
+`HASKINPROXY_PORT=2702`, `WINNERPROXY_PORT=2777`,
+`MAINTENANCEVIEW_PORT=18081`, `WEBUI_PORT=8080`), matching
+`deploy/.env.example` and `deploy/docker-compose.yml`. Prefill only fills
+EMPTY fields (persisted / human-edited values are never overwritten); a
+"恢复默认" button explicitly resets all six. Every field labels its service,
+when it is used, and how to fill it for local practice; production replaces
+them with real domains. If a template port ever changes, update
+`PUBLIC_URL_FIELDS` and this entry together.
 
 ### Proxy layer (`internal/server/handlers_bootstrap.go`)
 
