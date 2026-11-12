@@ -37,7 +37,7 @@ COPY --from=builder /out/hasmv /app/hasmv
 COPY --from=builder /src/frontend/dist/ /app/frontend/dist/
 COPY docker-entrypoint.sh /usr/local/bin/entrypoint.sh
 RUN chmod +x /usr/local/bin/entrypoint.sh
-EXPOSE 18081
+EXPOSE 2771
 USER app
 ENTRYPOINT ["/usr/local/bin/entrypoint.sh"]
 CMD ["/app/hasmv"]

@@ -25,7 +25,7 @@ export default defineConfig({
       allow: ['..'],
     },
     proxy: {
-      '/api': 'http://127.0.0.1:18081',
+      '/api': 'http://127.0.0.1:2771',
     },
   },
   build: {

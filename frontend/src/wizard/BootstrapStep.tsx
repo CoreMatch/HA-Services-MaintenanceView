@@ -82,7 +82,7 @@ type PublicUrlField = {
 // 端口的单一事实源（改动须同步这里与 knowledge/0008 的记载）：
 //   HA-Cupbearer/internal/bootstrap/render.go 变量字典 ——
 //   HRPAUTH_PORT=2778、YGG_PORT=2770、HASKINPROXY_PORT=2702、
-//   WINNERPROXY_PORT=2777、MAINTENANCEVIEW_PORT=18081、WEBUI_PORT=8080；
+//   WINNERPROXY_PORT=2777、MAINTENANCEVIEW_PORT=2771、WEBUI_PORT=8080；
 //   与 HA-Cupbearer/deploy/.env.example、deploy/docker-compose.yml 的默认一致。
 // 生产部署把这些换成真实域名（可带反向代理路径，如 YGG 挂在 /yggdrasil-api）。
 const PUBLIC_URL_FIELDS: PublicUrlField[] = [
@@ -136,8 +136,8 @@ const PUBLIC_URL_FIELDS: PublicUrlField[] = [
     label: "运维面板对外地址",
     service: "MaintenanceView（本运维面板）",
     usage: "面板自身的对外访问地址（public_base_url）",
-    localHint: "模板默认 18081；本套演练环境实际在 18605，按实填",
-    defaultUrl: "http://127.0.0.1:18081",
+    localHint: "模板默认 2771（裸金属生产实测端口，18081 系历史笔误已废）；演练环境按其实际端口填",
+    defaultUrl: "http://127.0.0.1:2771",
     placeholder: "生产填真实域名，如 https://maintenance.example.com",
   },
 ];

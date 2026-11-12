@@ -40,8 +40,8 @@ npm run build
 ```
 
 Then open `http://127.0.0.1:2771` — the port follows `server.listen` in
-`config.yaml` (the example file and the code default use `:2771`; container
-deployments use `:18081`, see the Dockerfile).
+`config.yaml` (the example file, the code default, and the container template
+all use `:2771`; the former container port `:18081` was a typo, now retired).
 
 ## Deployment facts
 
@@ -51,7 +51,7 @@ at the repo root (consumed by HA-Cupbearer's orchestrator;
 treats it as read-only):
 
 - Bare-metal production listens on `:2771`, loopback-only (container
-  deployments use `:18081`); health probe `GET /healthz`.
+  deployments use the same `:2771`); health probe `GET /healthz`.
 - Depends on HA-Cupbearer (`cupbearer.base_url`); no database, no Redis.
 - Config file `config.yaml` (template version 1); state in
   `./data/projects.json`; static frontend served from `./frontend/dist`.
@@ -126,7 +126,7 @@ Ports and directories used here (any free equivalents work):
 |---|---|---|
 | Tinyvisor | 18093 | `/tmp/ha-e2e/tinyvisor` |
 | HA-Cupbearer (orchestration enabled) | 18090 | `/tmp/ha-e2e/cupbearer-run` |
-| This service (panel) | 18081 | this repository root |
+| This service (panel) | 2771 | this repository root |
 
 ### 1. Tinyvisor
 
@@ -219,7 +219,7 @@ cupbearer:
   token: "<same as credentials.json deploy_token>"
 server:
   frontend_dist: ./frontend/dist
-  listen: :18081
+  listen: :2771
 state:
   projects_path: ./data/projects.json
 version: "1"
@@ -227,14 +227,14 @@ version: "1"
 
 Build and run from the repository root (`go build -o hasmv .`, frontend via
 `cd frontend && npm install && npm run build`), then open
-`http://127.0.0.1:18081` and log in with that same token.
+`http://127.0.0.1:2771` and log in with that same token.
 
 ### 4. Confirming the page shows the real Cupbearer's data
 
 Do not trust the panel on faith — cross-check counts against the source:
 
 - **Run records:** the number of entries in the 运行记录 panel must equal
-  both `curl -s http://127.0.0.1:18081/api/orchestration/runs` (after login,
+  both `curl -s http://127.0.0.1:2771/api/orchestration/runs` (after login,
   `data.runs | length`) and `ls /tmp/ha-e2e/cupbearer-run/data/deploy/runs/*.json | wc -l`
   on disk. Triggering one dry-run deploy from the UI must raise all three by
   one.

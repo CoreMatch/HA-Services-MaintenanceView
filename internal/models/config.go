@@ -49,8 +49,10 @@ func DefaultConfig() *Config {
 	return &Config{
 		Version: "1",
 		Server: ServerConfig{
-			Listen:        ":18081",
-			PublicBaseURL: "http://127.0.0.1:18081",
+			// 2771 = MV 裸金属生产端口（与 config.example.yaml、deploy-manifest
+			// 一致）；历史容器模板/代码默认曾误写 18081，已统一到 2771。
+			Listen:        ":2771",
+			PublicBaseURL: "http://127.0.0.1:2771",
 			FrontendDist:  "./frontend/dist",
 			// 安全默认：不信任任何代理（ClientIP 取直连远端），Cookie 不带
 			// Secure（兼容本机 HTTP）。二者均为可配置项，见 ServerConfig。

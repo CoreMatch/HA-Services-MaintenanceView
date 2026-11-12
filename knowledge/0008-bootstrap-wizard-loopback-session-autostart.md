@@ -64,8 +64,10 @@ service's default port taken from the Cupbearer config templates — the
 single source of truth is HA-Cupbearer `internal/bootstrap/render.go`'s
 variable dictionary (`HRPAUTH_PORT=2778`, `YGG_PORT=2770`,
 `HASKINPROXY_PORT=2702`, `WINNERPROXY_PORT=2777`,
-`MAINTENANCEVIEW_PORT=18081`, `WEBUI_PORT=8080`), matching
-`deploy/.env.example` and `deploy/docker-compose.yml`. Prefill only fills
+`MAINTENANCEVIEW_PORT=2771`, `WEBUI_PORT=8080`), matching
+`deploy/.env.example` and `deploy/docker-compose.yml`. (MV's port was unified
+onto 2771 — its bare-metal production port; the former `18081` was a typo.)
+Prefill only fills
 EMPTY fields (persisted / human-edited values are never overwritten); a
 "恢复默认" button explicitly resets all six. Every field labels its service,
 when it is used, and how to fill it for local practice; production replaces

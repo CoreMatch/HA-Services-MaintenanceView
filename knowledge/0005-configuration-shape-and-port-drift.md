@@ -2,13 +2,17 @@
 
 ## Status
 
-Accepted (records current state, including accidental artifacts in git)
+Accepted (records current state, including accidental artifacts in git).
+Updated 2026-11-12: the historical port split is resolved — MV is unified on
+`:2771`; the former container default `:18081` is retired as a typo.
 
 ## Context
 
 The config layer is versioned (a migration framework currently at version
-"1"), and the repository carries two migration backup files plus a port
-split between the code default and container deployments.
+"1"), and the repository carries two migration backup files. A former port
+split (code default `:2771` vs container `:18081`) existed until 2026-11-12,
+when the author ruled `18080/18081` documentation-era typos (every other
+service sits in the 27xx band) and MV was unified on `:2771`.
 
 ## Decision
 
@@ -28,31 +32,30 @@ Record the verified shape and the drift:
   `version` is stamped to `"1"` with a `.bak.<old-version>` backup written
   first (`internal/config/migrations.go::MigrateConfig`,
   `internal/config/migrations.go::BackupConfigFile`).
-- **Port split between code default and containers (recorded as-is).** The
-  code default listen port/public URL is `:2771`
-  (`internal/models/config.go::DefaultConfig`, matched by
-  `config.example.yaml`). The README quick-start points at `:2771` and
-  notes that container deployments use `:18081` (`README.md:L37-L39 fp=195b56d4`).
-  Container deployments indeed use `:18081`:
-  - the Docker image `EXPOSE 18081` (`Dockerfile:L40 fp=416eab00`);
-  - the platform compose maps `${MAINTENANCEVIEW_PORT:-18081}` and renders a
-    config with `listen: ":18081"` (HA-Cupbearer
+- **Port unified on `:2771` (split resolved).** The code default listen
+  port/public URL is `:2771` (`internal/models/config.go::DefaultConfig`,
+  matched by `config.example.yaml`), and container deployments now use the
+  same `:2771`:
+  - the Docker image `EXPOSE 2771` (`Dockerfile`);
+  - the platform compose maps `${MAINTENANCEVIEW_PORT:-2771}` and renders a
+    config with `listen: ":2771"` (HA-Cupbearer
     `/home/lnb/Desktop/HA/maintanance/HA-Cupbearer/deploy/docker-compose.yml (field: MAINTENANCEVIEW_PORT)`,
     `/home/lnb/Desktop/HA/maintanance/HA-Cupbearer/deploy/config/ha-services-maintenance-view.yaml.tmpl (field: listen)`).
-  So `:2771` applies only to a bare local `go run .`; composed deployments
-  use `:18081`.
+  The former container default `:18081` was a documentation-era typo (all
+  other services sit in the 27xx band) and is retired; remaining `18081`
+  mentions are deliberate historical annotations only.
 - **Accidental artifacts tracked in git.** `config.yaml.bak.0` and
-  `config.yaml.bak.1` (both containing an `:18081` config) are tracked.
+  `config.yaml.bak.1` (both containing a `:18081` config) are tracked.
   They are migration backups from the author's machine, not intended
-  content. An earlier survey recorded a temporary `.gitignore` entry for
+  content; their `:18081` reflects the retired typo port and is superseded
+  by `:2771`. An earlier survey recorded a temporary `.gitignore` entry for
   stray `1` files; that rule is absent from the current `.gitignore`.
 
 ## Consequences
 
 - Operators running `go run .` without a config file get port 2771; the
-  README documents `:2771` for the bare local run and `:18081` for
-  container deployments (`README.md:L37-L39 fp=195b56d4`). Composed deployments use
-  18081 (template sets it).
+  README documents `:2771` for both the bare local run and container
+  deployments (unified). Composed deployments use 2771 (template sets it).
 - `public_base_url` is currently returned by `GET /api/config` but no
   verified code path consumes it for redirects or URL building (frontend
   uses relative paths). Its intended purpose is *pending author
@@ -68,8 +71,10 @@ Record the verified shape and the drift:
   `internal/config/migrations.go::configMigrations`,
   `internal/config/migrations.go::MigrateConfig`,
   `internal/config/migrations.go::BackupConfigFile`.
-- `config.yaml.bak.0`, `config.yaml.bak.1` — tracked migration backups.
-- `README.md:L37-L39 fp=195b56d4`; `Dockerfile:L40 fp=416eab00`; HA-Cupbearer
+- `config.yaml.bak.0`, `config.yaml.bak.1` — tracked migration backups
+  (carry the retired `:18081`; historical only).
+- `README.md` quick-start (`:2771`); `Dockerfile` (`EXPOSE 2771`);
+  HA-Cupbearer
   `/home/lnb/Desktop/HA/maintanance/HA-Cupbearer/deploy/config/ha-services-maintenance-view.yaml.tmpl (field: listen)`
-  (`listen: ":18081"`).
+  (`listen: ":2771"`).
 - `config.example.yaml` — matches code defaults (`:2771`).

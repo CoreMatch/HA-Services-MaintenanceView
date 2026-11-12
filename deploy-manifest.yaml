@@ -13,7 +13,7 @@ facts:
     # 生产裸金属端口为 2771：代码默认 :2771（internal/models/config.go
     # DefaultConfig，config.example.yaml 同值），生产实测 :2771 /healthz 200
     # （PROD-UPGRADE-EXECUTED-20261106 §7/§10-3）。
-    # 漂移记录：容器模板用 :18081（本仓 knowledge 0005 已记录该端口分裂）。
+    # 历史漂移已消除：容器模板曾用 :18081（笔误），现容器/裸金属统一 :2771。
     - name: http
       port: 2771
       exposure: loopback
