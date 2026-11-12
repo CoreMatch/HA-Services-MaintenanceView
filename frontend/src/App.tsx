@@ -74,7 +74,8 @@ function LoginScreen({ onLoggedIn }: { onLoggedIn: () => void }) {
 export default function App() {
   const [session, setSession] = useState<SessionStatus | null>(null);
   const [sessionError, setSessionError] = useState<string | null>(null);
-  const [tab, setTab] = useState<Tab>("orchestration");
+  // 默认落在首次使用向导；熟练用户一步切到"编排操作"直连入口。
+  const [tab, setTab] = useState<Tab>("bootstrap");
 
   const loadSession = useCallback(async () => {
     setSessionError(null);
@@ -161,8 +162,8 @@ export default function App() {
         <nav className="flex gap-2 border-b border-edge pb-0">
           {(
             [
-              ["orchestration", "编排操作"],
-              ["bootstrap", "开荒初始化"],
+              ["bootstrap", "首次使用向导"],
+              ["orchestration", "编排操作（高级）"],
             ] as [Tab, string][]
           ).map(([key, label]) => (
             <button

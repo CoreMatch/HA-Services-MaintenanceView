@@ -15,6 +15,9 @@ export type DeployManifestEntry = {
   service_version: string;
   manager: string; // tinyvisor | aapanel | manual | plugin | ""(external)
   source_path: string;
+  // 契约 1.5.0：清单声明的裸金属产物来源（local_path | ci_release | grail；
+  // external/plugin 类与未声明为空）。
+  artifact_source: string;
 };
 
 export type DeployManifests = {
@@ -292,8 +295,16 @@ export const api = {
     }),
   logout: () => requestEnvelope<never>("/api/session/logout", { method: "POST" }),
 
+  cupbearerHealthz: () => requestEnvelope<Record<string, unknown>>("/api/cupbearer/healthz"),
   orchestrationManifests: async () => normalizeManifests(await requestEnvelope<DeployManifests>("/api/orchestration/manifest")),
   orchestrationValidation: async () => normalizeValidation(await requestEnvelope<DeployValidation>("/api/orchestration/validation")),
+  orchestrationPreflight: async (scope?: { projects?: string; group?: string }) => {
+    const query = new URLSearchParams();
+    if (scope?.projects) query.set("projects", scope.projects);
+    if (scope?.group) query.set("group", scope.group);
+    const suffix = query.size > 0 ? `?${query.toString()}` : "";
+    return normalizePreflight(await requestEnvelope<PreflightReport>(`/api/orchestration/preflight${suffix}`))!;
+  },
   orchestrationStatus: () => requestEnvelope<DeployStatusReport>("/api/orchestration/status"),
   orchestrationRuns: async () => {
     const list = await requestEnvelope<RunsList>("/api/orchestration/runs");
@@ -313,6 +324,13 @@ export const api = {
       await requestEnvelope<Run>("/api/orchestration/rollback", {
         method: "POST",
         body: JSON.stringify(request),
+      })
+    ),
+  triggerContainerDeploy: async () =>
+    normalizeRun(
+      await requestEnvelope<Run>("/api/orchestration/container-trigger", {
+        method: "POST",
+        body: JSON.stringify({}),
       })
     ),
 
