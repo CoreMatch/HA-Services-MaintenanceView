@@ -245,6 +245,7 @@ export default function BootstrapStep({
     }
     const infra: Record<string, unknown> = { launch: inputs.launchAllowed };
     if (inputs.mysqlHostPort.trim()) infra.mysql_host_port = Number(inputs.mysqlHostPort.trim());
+    if (inputs.redisHostPort.trim()) infra.redis_host_port = Number(inputs.redisHostPort.trim());
     const database: Record<string, unknown> = {};
     if (inputs.adminHost.trim()) database.admin_host = inputs.adminHost.trim();
     if (inputs.adminPort.trim()) database.admin_port = Number(inputs.adminPort.trim());
@@ -530,6 +531,13 @@ export default function BootstrapStep({
                     value={inputs.mysqlHostPort}
                     onChange={(e) => onInputsChange({ ...inputs, mysqlHostPort: e.target.value })}
                     placeholder="3306"
+                  />
+                </Field>
+                <Field label="Redis 宿主发布端口（探测/接管用；留空 = 6379）">
+                  <Input
+                    value={inputs.redisHostPort}
+                    onChange={(e) => onInputsChange({ ...inputs, redisHostPort: e.target.value })}
+                    placeholder="6379"
                   />
                 </Field>
               </div>

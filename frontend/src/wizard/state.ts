@@ -76,6 +76,7 @@ export type WizardState = {
     adminUser: string;
     adminPassword: string;
     mysqlHostPort: string;
+    redisHostPort: string;
     launchAllowed: boolean;
     dbPolicy: DbPolicy;
     existingPassword: string;
@@ -99,6 +100,7 @@ export function defaultWizardState(): WizardState {
       adminUser: "",
       adminPassword: "",
       mysqlHostPort: "",
+      redisHostPort: "",
       launchAllowed: true,
       dbPolicy: "skip",
       existingPassword: "",
