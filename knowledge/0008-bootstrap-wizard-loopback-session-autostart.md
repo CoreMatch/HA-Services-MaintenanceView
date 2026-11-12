@@ -39,7 +39,11 @@ confirmation (declared=active + healthy as the terminal check). Every step
 goes back, can be skipped (tracked and shown), and explains why it exists.
 Wizard state (current step + human inputs) persists in localStorage
 (`mv-wizard-state-v1`) so refresh/reopen resumes; backend run records stay
-the server's resume mechanism. Client-side blocking: empty/invalid URLs
+the server's resume mechanism. The whole panel is keyboard-operable:
+Enter/Space on a focused button/checkbox activates it through an explicit
+app-level keydown handler (`frontend/src/App.tsx`) that adopts the default
+action (preventDefault first, so normal browsers never double-fire).
+Client-side blocking: empty/invalid URLs
 show plain-language errors on submit attempt; server-side field errors
 (upstream 400 `data.field_errors`) render as a blocker list. Advanced
 section collapsed (external-MySQL admin password; everything else
