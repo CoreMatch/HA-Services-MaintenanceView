@@ -22,14 +22,47 @@ import {
   type BootstrapRun,
   type BootstrapStatus,
 } from "../api";
-import type { DeployPath, WizardState } from "./state";
+import type { DbPolicy, DeployPath, WizardState } from "./state";
 
 // 第 3 步：密钥与初始化。完全复用 Cupbearer bootstrap 层的幂等能力
 //（plan/run，重跑即续跑）——本组件不另写一套。与旧单页表单的区别：
 //   - 渲染目标由第 1 步的部署路径单选决定（不再双勾选）；
-//   - 人填的输入经向导状态持久化（刷新/重开不丢）。
+//   - 人填的输入经向导状态持久化（刷新/重开不丢）；
+//   - 既有库/账号冲突的处置（skip/reuse/takeover）在这里显式选择，
+//     探测结论与运行结果都可见（契约 1.6.0）。
 
 export type BootstrapInputsState = WizardState["bootstrapInputs"];
+
+// 三种处置的展示定义。默认 skip：最保守——不动任何既有对象；
+// 探测不到冲突时该选择不生效（照常创建），所以默认它不会挡住首次初始化。
+const DB_POLICIES: {
+  id: DbPolicy;
+  name: string;
+  summary: string;
+  destructive: boolean;
+}[] = [
+  {
+    id: "skip",
+    name: "跳过（保留现状）",
+    summary:
+      "不建库、不改账号，databases 步整体不动，只补其余步骤。最保守：不动任何既有对象；探测不到冲突时此选择不生效（照常创建）。",
+    destructive: false,
+  },
+  {
+    id: "reuse",
+    name: "沿用（不改口令）",
+    summary:
+      "保留既有账号的口令，你需要提供它的当前口令；验证通过后收编进本次状态继续。不改任何既有对象，但要求你确实掌握现口令。",
+    destructive: false,
+  },
+  {
+    id: "takeover",
+    name: "接管（改口令）",
+    summary:
+      "把既有账号的口令改为本次生成的凭据再继续。破坏性最大：依赖该账号既有口令的其他系统会失联，只在确认可以统一改口令时选。",
+    destructive: true,
+  },
+];
 
 type PublicUrlField = { key: string; label: string; placeholder: string };
 
@@ -151,6 +184,7 @@ export default function BootstrapStep({
   const [loadError, setLoadError] = useState<string | null>(null);
 
   const [urlErrors, setUrlErrors] = useState<Record<string, string>>({});
+  const [policyError, setPolicyError] = useState("");
   const [fieldErrors, setFieldErrors] = useState<{ field: string; message: string }[]>([]);
   const [plan, setPlan] = useState<BootstrapPlan | null>(null);
   const [run, setRun] = useState<BootstrapRun | null>(null);
@@ -209,10 +243,21 @@ export default function BootstrapStep({
     for (const f of PUBLIC_URL_FIELDS) {
       urls[f.key] = inputs.urls[f.key] ?? "";
     }
+    const infra: Record<string, unknown> = { launch: inputs.launchAllowed };
+    if (inputs.mysqlHostPort.trim()) infra.mysql_host_port = Number(inputs.mysqlHostPort.trim());
+    const database: Record<string, unknown> = {};
+    if (inputs.adminHost.trim()) database.admin_host = inputs.adminHost.trim();
+    if (inputs.adminPort.trim()) database.admin_port = Number(inputs.adminPort.trim());
+    if (inputs.adminUser.trim()) database.admin_user = inputs.adminUser.trim();
+    if (inputs.adminPassword.trim()) database.admin_password = inputs.adminPassword.trim();
+    if (inputs.dbPolicy) database.policy = inputs.dbPolicy;
+    if (inputs.dbPolicy === "reuse" && inputs.existingPassword.trim()) {
+      database.existing_password = inputs.existingPassword.trim();
+    }
     return {
       targets,
-      infra: { launch: true },
-      database: inputs.adminPassword.trim() ? { admin_password: inputs.adminPassword.trim() } : {},
+      infra,
+      database,
       public_urls: urls,
       paths: { baremetal_outputs: outputs },
     };
@@ -229,7 +274,12 @@ export default function BootstrapStep({
       }
     }
     setUrlErrors(errs);
-    return Object.keys(errs).length === 0;
+    setPolicyError(
+      inputs.dbPolicy === "reuse" && !inputs.existingPassword.trim()
+        ? "选择沿用（reuse）时必须提供既有账号的当前口令"
+        : ""
+    );
+    return Object.keys(errs).length === 0 && !(inputs.dbPolicy === "reuse" && !inputs.existingPassword.trim());
   }
 
   function extractFieldErrors(err: unknown): { field: string; message: string }[] {
@@ -364,6 +414,63 @@ export default function BootstrapStep({
       </section>
 
       <section>
+        <h3 className="mb-2 text-lg font-semibold text-ink">既有数据库的处置</h3>
+        <p className="mb-3 text-sm text-ink-muted">
+          初始化前会先探测目标库与应用账号是否已存在、本次凭据能否验证。只有当"应用账号已存在且口令不一致"
+          （例如在这台机器上重新初始化、上次初始化中断后重来）时，下面的选择才生效；探测不到冲突时一律照常创建，
+          选什么都不破坏。冲突已探测到而未做选择时，运行会明确失败、不改动任何数据库对象。
+        </p>
+        <div className="grid grid-cols-1 gap-4 md:grid-cols-3">
+          {DB_POLICIES.map((option) => {
+            const selected = inputs.dbPolicy === option.id;
+            return (
+              <Panel
+                key={option.id}
+                className={`cursor-pointer p-5 transition-colors ${selected ? "border-accent" : "hover:bg-raised"}`}
+                onClick={() => onInputsChange({ ...inputs, dbPolicy: option.id })}
+                onKeyDown={(event) => {
+                  if (event.key === "Enter" || event.key === " ") {
+                    event.preventDefault();
+                    onInputsChange({ ...inputs, dbPolicy: option.id });
+                  }
+                }}
+                role="radio"
+                aria-checked={selected}
+                tabIndex={0}
+              >
+                <div className="mb-2 flex items-center gap-2">
+                  <span
+                    className={`inline-block h-4 w-4 rounded-full border ${selected ? "border-accent bg-accent" : "border-edge-strong"}`}
+                  />
+                  <span className="font-semibold text-ink">{option.name}</span>
+                  {selected ? <Badge tone="accent">已选择</Badge> : null}
+                  {option.destructive ? <Badge tone="danger">破坏性</Badge> : null}
+                </div>
+                <p className="text-sm leading-relaxed text-ink-muted">{option.summary}</p>
+              </Panel>
+            );
+          })}
+        </div>
+        <p className="mt-2 text-sm text-ink-faint">
+          默认预选"跳过"的理由：它是唯一不动任何既有对象的选择；首次初始化（无冲突）时它不生效、照常建库，
+          所以不会挡住新人，也不会替人做破坏性决定。
+        </p>
+        {inputs.dbPolicy === "reuse" ? (
+          <div className="mt-3 max-w-xl">
+            <Field label="既有账号的当前口令（沿用必填；先验证、后收编进状态，绝不回显）">
+              <Input
+                type="password"
+                value={inputs.existingPassword}
+                onChange={(e) => onInputsChange({ ...inputs, existingPassword: e.target.value })}
+                placeholder="既有应用账号的当前口令"
+              />
+            </Field>
+          </div>
+        ) : null}
+        {policyError ? <div className="mt-2 text-sm text-danger">{policyError}</div> : null}
+      </section>
+
+      <section>
         <h3 className="mb-2 text-lg font-semibold text-ink">对外地址（只有你知道）</h3>
         <p className="mb-3 text-sm text-ink-muted">
           其余一切（全部密钥、库与账号、内部地址、签名密钥）都由后端自动生成/推导，无需填写。
@@ -388,14 +495,58 @@ export default function BootstrapStep({
           </CollapsibleTrigger>
           <CollapsibleContent>
             <Inset className="mt-2 space-y-3 px-4 py-3">
-              <Field label="外部 MySQL 管理口令（仅当接管已有 MySQL 时需要；一键拉起则留空自动生成）">
-                <Input
-                  type="password"
-                  value={inputs.adminPassword}
-                  onChange={(e) => onInputsChange({ ...inputs, adminPassword: e.target.value })}
-                  placeholder="留空 = 自动生成并一键拉起"
+              <div className="grid grid-cols-1 gap-3 md:grid-cols-2">
+                <Field label="MySQL 管理口地址（接管外部实例时填；留空 = 127.0.0.1）">
+                  <Input
+                    value={inputs.adminHost}
+                    onChange={(e) => onInputsChange({ ...inputs, adminHost: e.target.value })}
+                    placeholder="127.0.0.1"
+                  />
+                </Field>
+                <Field label="MySQL 管理口端口（留空 = 3306）">
+                  <Input
+                    value={inputs.adminPort}
+                    onChange={(e) => onInputsChange({ ...inputs, adminPort: e.target.value })}
+                    placeholder="3306"
+                  />
+                </Field>
+                <Field label="MySQL 管理账号（留空 = root）">
+                  <Input
+                    value={inputs.adminUser}
+                    onChange={(e) => onInputsChange({ ...inputs, adminUser: e.target.value })}
+                    placeholder="root"
+                  />
+                </Field>
+                <Field label="MySQL 管理口令（接管已有实例时必填；一键拉起则留空自动生成）">
+                  <Input
+                    type="password"
+                    value={inputs.adminPassword}
+                    onChange={(e) => onInputsChange({ ...inputs, adminPassword: e.target.value })}
+                    placeholder="留空 = 自动生成并一键拉起"
+                  />
+                </Field>
+                <Field label="MySQL 宿主发布端口（探测/拉起用；留空 = 3306）">
+                  <Input
+                    value={inputs.mysqlHostPort}
+                    onChange={(e) => onInputsChange({ ...inputs, mysqlHostPort: e.target.value })}
+                    placeholder="3306"
+                  />
+                </Field>
+              </div>
+              <label className="flex cursor-pointer items-center gap-3">
+                <input
+                  type="checkbox"
+                  checked={inputs.launchAllowed}
+                  onChange={(e) => onInputsChange({ ...inputs, launchAllowed: e.target.checked })}
+                  className="h-4 w-4 accent-[var(--ha-accent)]"
                 />
-              </Field>
+                <span>
+                  探测不到时允许一键拉起受管容器
+                  <span className="block text-sm text-ink-faint">
+                    关闭后只接管已有实例：探测不到 MySQL/Redis 会直接报缺，不会新建容器
+                  </span>
+                </span>
+              </label>
               <p className="text-sm text-ink-faint">
                 库名、应用账号、客户端 id、内部地址等默认值由后端按生态约定推导；如需覆盖请直接调用
                 Cupbearer 的 /api/v1/deploy/bootstrap/run 提交完整输入。
@@ -455,6 +606,10 @@ export default function BootstrapStep({
             重跑（从断点继续）
           </Button>
         ) : null}
+        <span className="text-sm text-ink-faint">
+          当前处置：{DB_POLICIES.find((p) => p.id === inputs.dbPolicy)?.name ?? "未选择"}
+          {inputs.dbPolicy === "reuse" ? "（需提供既有口令）" : ""}
+        </span>
       </section>
 
       {actionError ? <Banner tone="danger">{actionError}</Banner> : null}

@@ -59,6 +59,10 @@ export const STEP_META: Record<StepId, { title: string; why: string }> = {
   },
 };
 
+// 既有应用账号/库冲突的处置（契约 1.6.0：database.policy）。
+// 默认 skip：最保守——不动任何既有对象；无冲突时该值不生效（照常创建）。
+export type DbPolicy = "" | "skip" | "reuse" | "takeover";
+
 // 向导持久化状态（人这一侧）；后端运行记录的续跑不依赖它。
 export type WizardState = {
   step: StepId;
@@ -67,7 +71,14 @@ export type WizardState = {
   // bootstrap 步骤的人填输入（刷新不丢）。
   bootstrapInputs: {
     urls: Record<string, string>;
+    adminHost: string;
+    adminPort: string;
+    adminUser: string;
     adminPassword: string;
+    mysqlHostPort: string;
+    launchAllowed: boolean;
+    dbPolicy: DbPolicy;
+    existingPassword: string;
     bmRoot: string;
     bmOutputs: Record<string, string>;
   };
@@ -81,7 +92,19 @@ export function defaultWizardState(): WizardState {
     step: "path",
     path: null,
     skipped: [],
-    bootstrapInputs: { urls: {}, adminPassword: "", bmRoot: "", bmOutputs: {} },
+    bootstrapInputs: {
+      urls: {},
+      adminHost: "",
+      adminPort: "",
+      adminUser: "",
+      adminPassword: "",
+      mysqlHostPort: "",
+      launchAllowed: true,
+      dbPolicy: "skip",
+      existingPassword: "",
+      bmRoot: "",
+      bmOutputs: {},
+    },
     updatedAt: new Date().toISOString(),
   };
 }
