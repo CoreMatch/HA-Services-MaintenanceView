@@ -61,8 +61,8 @@ Record the verified dependency and data-flow shape:
 - `internal/cupbearer/client.go::Healthz`, `internal/cupbearer/client.go::Manifest`,
   `internal/cupbearer/client.go::Projects` — endpoints;
   `internal/cupbearer/client.go::NewClient` — timeout.
-- `internal/server/handlers.go::GetDeployerHealthz`,
-  `internal/server/handlers.go::GetDeployerManifest`,
+- `internal/server/handlers.go::GetCupbearerHealthz`,
+  `internal/server/handlers.go::GetCupbearerManifest`,
   `internal/server/handlers.go::GetProjects` — cupbearer proxies and project view.
 - `internal/state/store.go::Load`, `internal/state/store.go::Save` — projects.json load/save.
 - `internal/models/config.go::DefaultConfig` — defaults.
