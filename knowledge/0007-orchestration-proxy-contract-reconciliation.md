@@ -28,8 +28,10 @@ Record the reconciled contract as implemented at HEAD.
 | `GET /api/orchestration/status` | `GET /api/v1/deploy/status` | none (read-only) |
 | `GET /api/orchestration/runs` | `GET /api/v1/deploy/runs` | none (read-only) |
 | `GET /api/orchestration/runs/:id` | `GET /api/v1/deploy/runs/:id` | none (read-only) |
+| `GET /api/orchestration/preflight` | `GET /api/v1/deploy/preflight` | none (read-only; `projects`/`group` whitelisted and re-encoded) |
 | `POST /api/orchestration/deploy` | `POST /api/v1/deploy/run` | `X-Deploy-Token` injected server-side |
 | `POST /api/orchestration/rollback` | `POST /api/v1/deploy/rollback` | `X-Deploy-Token` injected server-side |
+| `POST /api/orchestration/container-trigger` | `POST /api/v1/deploy/container/trigger` | `X-Deploy-Token` injected server-side (stack-level, no per-project gate) |
 
 Differences from the design-doc assumptions that matter:
 

@@ -88,8 +88,10 @@ treats it as read-only):
 - `GET /api/orchestration/status`
 - `GET /api/orchestration/runs`
 - `GET /api/orchestration/runs/:id`
+- `GET /api/orchestration/preflight`
 - `POST /api/orchestration/deploy`
 - `POST /api/orchestration/rollback`
+- `POST /api/orchestration/container-trigger`
 
 Routes registered after the session middleware require a valid session when
 `cupbearer.token` is configured. The orchestration shapes proxied here follow

@@ -15,20 +15,35 @@ HA-Cupbearer
 
 ## Decision
 
-### Wizard page (`frontend/src/WizardView.tsx`)
+### Wizard (`frontend/src/WizardView.tsx` + `frontend/src/wizard/`)
 
-Replaces the legacy per-project bootstrap page on the "开荒初始化" tab
-(legacy `/api/projects/:name/initialize` endpoints remain for now, UI
-removed). Flow: infra cards (MySQL/Redis: mode badges, BOTH connection forms
-— bare-metal address and compose address — health, one-click launch when
-absent) → the six public URLs (the only inputs no backend can derive) →
-preview (`POST /api/bootstrap/plan`) → one-click run
-(`POST /api/bootstrap/run`) with per-step progress, masked fingerprints for
-every generated value, notes, and a retry button (re-run = resume from the
-breakpoint). Client-side blocking: empty/invalid URLs show plain-language
-errors on submit attempt; server-side field errors (upstream 400
-`data.field_errors`) render as a blocker list. Advanced section collapsed
-(external-MySQL admin password; everything else backend-derived).
+First-use wizard, default tab ("首次使用向导"); the advanced
+"编排操作（高级）" tab stays as the direct entry for experienced users.
+Seven steps (`frontend/src/wizard/state.ts::STEP_ORDER`): deploy path
+(explicit single choice bare-metal/container — one deployment walks one
+path, and the choice drives which target forms/execution entry render) →
+environment self-check (aggregates the read-only endpoints; 503 and probe
+failures become checklist items with an actionable next step) → secrets &
+initialization (the original bootstrap form — infra cards with BOTH
+connection forms and one-click launch, the six public URLs as the only
+human inputs, preview (`POST /api/bootstrap/plan`) and one-click run
+(`POST /api/bootstrap/run`) with per-step progress, masked fingerprints,
+notes, retry-as-resume; target forms follow the chosen path, no more dual
+checkboxes) → artifact sources (declared `artifact_source` per project
+since contract 1.5.0, four-source prerequisite guide, manifest-gap /
+validation-failure detection with schema pointers and an in-UI
+deploy-manifest skeleton generator with inferred scan roots) → preflight
+(blockers carry per-name next actions) → execute (bare-metal deploy runs
+with dry-run default, or the container stack trigger) → health
+confirmation (declared=active + healthy as the terminal check). Every step
+goes back, can be skipped (tracked and shown), and explains why it exists.
+Wizard state (current step + human inputs) persists in localStorage
+(`mv-wizard-state-v1`) so refresh/reopen resumes; backend run records stay
+the server's resume mechanism. Client-side blocking: empty/invalid URLs
+show plain-language errors on submit attempt; server-side field errors
+(upstream 400 `data.field_errors`) render as a blocker list. Advanced
+section collapsed (external-MySQL admin password; everything else
+backend-derived).
 
 ### Proxy layer (`internal/server/handlers_bootstrap.go`)
 
