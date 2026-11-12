@@ -89,7 +89,8 @@ manifest_version: 1
 kind: service
 project: ${input.project || "my-service"}
 display_name: ${input.project || "My Service"}
-group: app
+# group 合法值：infra | core | satellite | build | ops | game | edge | web
+group: edge
 service_version: "0.1.0"
 
 facts:

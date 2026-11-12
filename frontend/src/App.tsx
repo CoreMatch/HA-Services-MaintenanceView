@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import { Badge, Banner, Button, Field, Input, Spinner } from "@ha/ui";
 import { api, ApiError, type SessionStatus } from "./api";
 import OrchestrationView from "./OrchestrationView";
@@ -76,6 +76,30 @@ export default function App() {
   const [sessionError, setSessionError] = useState<string | null>(null);
   // 默认落在首次使用向导；熟练用户一步切到"编排操作"直连入口。
   const [tab, setTab] = useState<Tab>("bootstrap");
+  const rootRef = useRef<HTMLElement | null>(null);
+
+  // 键盘激活语义：焦点在面板内按钮/勾选框上时，Enter/Space 显式接管激活
+  //（preventDefault 收编浏览器默认动作后再 click，正常浏览器里也不会双
+  // 触发）。整个面板可纯键盘操作——无障碍所需，也是部分受限渲染环境
+  //（输入管线被节流）下唯一可靠的驱动方式。
+  useEffect(() => {
+    function onKeyDown(event: KeyboardEvent) {
+      if (event.key !== "Enter" && event.key !== " ") return;
+      const active = document.activeElement;
+      if (!active || !rootRef.current?.contains(active)) return;
+      if (active instanceof HTMLButtonElement) {
+        event.preventDefault();
+        active.click();
+        return;
+      }
+      if (active instanceof HTMLInputElement && active.type === "checkbox") {
+        event.preventDefault();
+        active.click();
+      }
+    }
+    window.addEventListener("keydown", onKeyDown);
+    return () => window.removeEventListener("keydown", onKeyDown);
+  }, []);
 
   const loadSession = useCallback(async () => {
     setSessionError(null);
@@ -129,7 +153,7 @@ export default function App() {
   }
 
   return (
-    <main className="min-h-screen px-6 py-8">
+    <main className="min-h-screen px-6 py-8" ref={rootRef}>
       <div className="mx-auto max-w-6xl space-y-6">
         <header className="flex flex-wrap items-center justify-between gap-4">
           <div>

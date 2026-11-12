@@ -57,8 +57,15 @@ export default function PathStep({
               key={option.id}
               className={`cursor-pointer p-6 transition-colors ${selected ? "border-accent" : "hover:bg-raised"}`}
               onClick={() => onChoose(option.id)}
+              onKeyDown={(event) => {
+                if (event.key === "Enter" || event.key === " ") {
+                  event.preventDefault();
+                  onChoose(option.id);
+                }
+              }}
               role="radio"
               aria-checked={selected}
+              tabIndex={0}
             >
               <div className="mb-2 flex items-center gap-3">
                 <span
