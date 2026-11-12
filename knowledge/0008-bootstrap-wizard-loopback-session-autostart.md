@@ -29,7 +29,13 @@ connection forms and one-click launch, the six public URLs as the only
 human inputs, preview (`POST /api/bootstrap/plan`) and one-click run
 (`POST /api/bootstrap/run`) with per-step progress, masked fingerprints,
 notes, retry-as-resume; target forms follow the chosen path, no more dual
-checkboxes) → artifact sources (declared `artifact_source` per project
+checkboxes; since contract 1.6.0 a database-conflict disposition — three
+selectable cards skip/reuse/takeover with plain-language consequences, skip
+preselected and reasoned, reuse revealing a required existing-password
+field, plus full admin connection / MySQL / Redis host-port overrides in the
+advanced section, so a pre-existing app account on a different password is
+resolved explicitly instead of failing mid-run) → artifact sources
+(declared `artifact_source` per project
 since contract 1.5.0, four-source prerequisite guide, manifest-gap /
 validation-failure detection with schema pointers and an in-UI
 deploy-manifest skeleton generator with inferred scan roots) → preflight
