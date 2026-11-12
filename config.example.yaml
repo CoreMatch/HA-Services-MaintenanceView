@@ -4,6 +4,20 @@ server:
   public_base_url: "http://127.0.0.1:2771"
   frontend_dist: "./frontend/dist"
 
+  # 可信反向代理来源（IP 或 CIDR）列表。默认留空 = 不信任任何代理：
+  # 客户端 IP 一律取直连远端，伪造 X-Forwarded-For: 127.0.0.1 无法冒充
+  # 回环绕过登录门。仅当面板真的置于反代之后才显式列出代理地址；此时
+  # 反代必须用真实客户端 IP 覆写 X-Forwarded-For，且防火墙只放行代理来源。
+  # 示例（反代在 10.0.0.5）：trusted_proxies: ["10.0.0.5/32"]
+  trusted_proxies: []
+
+  # 会话 Cookie 的 Secure 位。本机 HTTP 保持 false；经 HTTPS 对外暴露时
+  # 必须置 true（否则 Cookie 可能经明文链路泄露）。
+  cookie_secure: false
+
+  # 回环免登录（Cupbearer 自启的受管形态置 true；独立部署留 false）。
+  loopback_session: false
+
 deployer:
   base_url: "http://127.0.0.1:18080"
   # Deployer 变更端点（部署/回滚）的部署凭据，即既有的运维身份：

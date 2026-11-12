@@ -1,6 +1,7 @@
 package server
 
 import (
+	"log"
 	"net/http"
 	"os"
 	"path/filepath"
@@ -14,6 +15,20 @@ import (
 
 func NewRouter(cfg *models.Config, client *cupbearer.Client, store *state.Store, sessions *SessionStore, requestLog *RequestLog) *gin.Engine {
 	router := gin.Default()
+
+	// 代理信任：默认不信任任何代理——Context.ClientIP() 一律取直连远端地址，
+	// 伪造 X-Forwarded-For: 127.0.0.1 无法冒充回环、绕过回环免登录门。仅当
+	// server.trusted_proxies 显式列出反代 CIDR 时才解析 X-Forwarded-For；
+	// 该场景要求反代用真实客户端 IP 覆写 XFF、且防火墙只放行代理来源。
+	// 非法 CIDR 属安全配置错误：响亮失败，绝不静默放行。
+	if len(cfg.Server.TrustedProxies) > 0 {
+		if err := router.SetTrustedProxies(cfg.Server.TrustedProxies); err != nil {
+			log.Fatalf("invalid server.trusted_proxies %v: %v", cfg.Server.TrustedProxies, err)
+		}
+	} else {
+		_ = router.SetTrustedProxies(nil)
+	}
+
 	handler := NewHandler(cfg, client, store, sessions, requestLog)
 
 	router.GET("/healthz", handler.Healthz)

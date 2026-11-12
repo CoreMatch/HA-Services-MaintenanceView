@@ -91,6 +91,33 @@ access, the same level as the historical no-token mode. The deploy token is
 still injected server-side into mutating proxy calls and never reaches the
 browser; the Cupbearer's endpoints stay fail-closed regardless.
 
+### Proxy trust & cookie hardening (`server.trusted_proxies`, `server.cookie_secure`)
+
+Loopback exemption decides by `Context.ClientIP()`, so who is "loopback" is
+only as trustworthy as gin's proxy handling. gin's default trusts ALL proxies
+(`ClientIP()` parses `X-Forwarded-For`), which let a forged
+`X-Forwarded-For: 127.0.0.1` masquerade as loopback and skip login — harmless
+while bound to 127.0.0.1, a one-shot bypass once bound to 0.0.0.0 or placed
+behind a reverse proxy. `NewRouter` therefore calls
+`SetTrustedProxies(nil)` by default (`internal/server/router.go`): no proxy is
+trusted, `ClientIP()` is the direct remote address, and the XFF header is
+ignored. A reverse-proxy deployment must set `server.trusted_proxies` to the
+proxy's IP/CIDR explicitly, AND that proxy must overwrite `X-Forwarded-For`
+with the real client IP while the firewall admits only the proxy origin —
+otherwise spoofing rights are handed to anyone who can connect directly. An
+invalid CIDR fails startup loud (security config is never silently ignored).
+Locked by `internal/server/auth_security_test.go` (spoofed XFF rejected
+without trusted proxies; honored only from a configured proxy; genuine
+loopback still exempt).
+
+Session cookie `Secure` is `server.cookie_secure` (default false for local
+HTTP; set true when exposing over HTTPS); `HttpOnly` is always on.
+
+Login rate limiting is deliberately NOT added: the credential is a 64-hex
+(256-bit) deploy token compared in constant time, so online brute force is
+impractical; a lockout/backout layer would add denial-of-service surface for
+no realistic gain. Revisit only if the credential model ever weakens.
+
 ### Cupbearer-supervised lifecycle (MV side responsibilities)
 
 MV needs nothing special to be supervised: it reads `config.yaml` from its
@@ -121,5 +148,9 @@ unchanged.
 - `internal/server/handlers_bootstrap.go` — proxy endpoints.
 - `internal/server/auth.go::loopbackTrusted` — loopback session gate.
 - `internal/models/config.go::ServerConfig.LoopbackSession` — config field.
+- `internal/server/router.go::NewRouter` — proxy-trust setup (`SetTrustedProxies`).
+- `internal/models/config.go::TrustedProxies`, `::CookieSecure` — hardening fields.
+- `internal/server/auth_security_test.go::TestXFFSpoofRejectedWithoutTrustedProxies`
+  — XFF-spoof / trusted-proxy / cookie-Secure regression locks.
 - Cupbearer side: HA-Cupbearer
   `knowledge/0016-first-run-bootstrap-mv-autostart-infra.md`.

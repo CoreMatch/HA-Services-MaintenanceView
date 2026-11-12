@@ -78,6 +78,11 @@ func (h *Handler) authEnabled() bool {
 // loopback_session（Cupbearer 自启的受管形态）且对端确为回环地址。
 // 面板被钉在 127.0.0.1，回环信任等价于本机操作员；部署凭据仍由服务端
 // 持有转发，浏览器不接触凭据，安全边界不变。
+//
+// 安全前提：这里取 Context.ClientIP()，而 NewRouter 默认 SetTrustedProxies(nil)
+// （不信任任何代理）——此时 ClientIP() 恒为直连远端地址，伪造
+// X-Forwarded-For: 127.0.0.1 不会被当作回环。只有显式配置了
+// server.trusted_proxies 才会解析 X-Forwarded-For（见 NewRouter 注释）。
 func (h *Handler) loopbackTrusted(c *gin.Context) bool {
 	if !h.cfg.Server.LoopbackSession {
 		return false
@@ -171,8 +176,10 @@ func (h *Handler) SessionLogin(c *gin.Context) {
 		return
 	}
 
+	// Secure 位由 server.cookie_secure 控制：本机 HTTP 默认关闭，经 HTTPS
+	// 对外暴露时置 true。httpOnly 恒为 true（脚本不可读）。
 	c.SetSameSite(http.SameSiteLaxMode)
-	c.SetCookie(sessionCookieName, id, int(sessionTTL.Seconds()), "/", "", false, true)
+	c.SetCookie(sessionCookieName, id, int(sessionTTL.Seconds()), "/", "", h.cfg.Server.CookieSecure, true)
 	c.JSON(http.StatusOK, gin.H{
 		"success": true,
 		"message": "session established",
@@ -186,7 +193,7 @@ func (h *Handler) SessionLogout(c *gin.Context) {
 		h.sessions.Revoke(id)
 	}
 	c.SetSameSite(http.SameSiteLaxMode)
-	c.SetCookie(sessionCookieName, "", -1, "/", "", false, true)
+	c.SetCookie(sessionCookieName, "", -1, "/", "", h.cfg.Server.CookieSecure, true)
 	c.JSON(http.StatusOK, gin.H{
 		"success": true,
 		"message": "session revoked",
