@@ -27,6 +27,10 @@ type DeployManifestEntry struct {
 	ServiceVersion string `json:"service_version"`
 	Manager        string `json:"manager"`
 	SourcePath     string `json:"source_path"`
+	// ArtifactSource 是清单声明的裸金属产物来源
+	//（local_path | ci_release | grail；external/plugin 类与未声明为空）。
+	// 契约 ha-cupbearer.yaml v1.5.0 起的纯增量字段。
+	ArtifactSource string `json:"artifact_source"`
 }
 
 // DeployValidation 是 GET /api/v1/deploy/validate 的 data 段。

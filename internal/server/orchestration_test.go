@@ -20,11 +20,13 @@ func init() {
 // stubCupbearer 按 HA-Cupbearer 编排端点的实际契约
 //（/api/v1/deploy/*，X-Deploy-Token）提供最小实现。
 type stubCupbearer struct {
-	server           *httptest.Server
-	lastDeployToken  string
-	lastRollbackToken string
-	deployReject     int             // 非 0 时 POST run 返回该状态码
-	deployRejectData json.RawMessage // 伴随拒绝响应的 data 段
+	server             *httptest.Server
+	lastDeployToken    string
+	lastRollbackToken  string
+	lastContainerToken string
+	lastPreflightQuery string
+	deployReject       int             // 非 0 时 POST run 返回该状态码
+	deployRejectData   json.RawMessage // 伴随拒绝响应的 data 段
 }
 
 func newStubCupbearer(t *testing.T) *stubCupbearer {
@@ -43,9 +45,9 @@ func newStubCupbearer(t *testing.T) *stubCupbearer {
 	manifestsData := map[string]any{
 		"count": 3,
 		"projects": []map[string]any{
-			{"project": "mca-server", "kind": "service", "display_name": "MCA Server", "group": "game", "service_version": "1.9.0", "manager": "tinyvisor", "source_path": "/x/mca/deploy-manifest.yaml"},
-			{"project": "hrpauth", "kind": "service", "display_name": "HRPAuth", "group": "platform", "service_version": "1.2.0", "manager": "aapanel", "source_path": "/x/hrpauth/deploy-manifest.yaml"},
-			{"project": "mysql", "kind": "external", "display_name": "MySQL", "group": "infra", "service_version": "8.0", "manager": "", "source_path": "/x/external/mysql.yaml"},
+			{"project": "mca-server", "kind": "service", "display_name": "MCA Server", "group": "game", "service_version": "1.9.0", "manager": "tinyvisor", "source_path": "/x/mca/deploy-manifest.yaml", "artifact_source": "local_path"},
+			{"project": "hrpauth", "kind": "service", "display_name": "HRPAuth", "group": "platform", "service_version": "1.2.0", "manager": "aapanel", "source_path": "/x/hrpauth/deploy-manifest.yaml", "artifact_source": "grail"},
+			{"project": "mysql", "kind": "external", "display_name": "MySQL", "group": "infra", "service_version": "8.0", "manager": "", "source_path": "/x/external/mysql.yaml", "artifact_source": ""},
 		},
 		"errors": []string{},
 	}
@@ -119,6 +121,21 @@ func newStubCupbearer(t *testing.T) *stubCupbearer {
 		stub.lastRollbackToken = r.Header.Get("X-Deploy-Token")
 		w.WriteHeader(http.StatusAccepted)
 		envelope(w, map[string]any{"id": "run-1-rb", "type": "rollback", "state": "running"})
+	})
+	mux.HandleFunc("GET /api/v1/deploy/preflight", func(w http.ResponseWriter, r *http.Request) {
+		stub.lastPreflightQuery = r.URL.RawQuery
+		envelope(w, map[string]any{
+			"checked_at": "2026-11-12T00:00:00Z",
+			"mode":       "deploy",
+			"results":    []any{},
+			"blockers":   []any{},
+			"warnings":   []any{},
+		})
+	})
+	mux.HandleFunc("POST /api/v1/deploy/container/trigger", func(w http.ResponseWriter, r *http.Request) {
+		stub.lastContainerToken = r.Header.Get("X-Deploy-Token")
+		w.WriteHeader(http.StatusAccepted)
+		envelope(w, map[string]any{"id": "run-1-ct", "type": "container-trigger", "state": "running"})
 	})
 	mux.HandleFunc("GET /api/v1/healthz", func(w http.ResponseWriter, r *http.Request) {
 		envelope(w, map[string]any{"service": "ha-cupbearer"})
@@ -391,6 +408,58 @@ func TestRollbackGatesAndForwards(t *testing.T) {
 	}
 }
 
+func TestPreflightPassthroughScoped(t *testing.T) {
+	env := newTestEnv(t, "")
+
+	recorder := doJSON(t, env, http.MethodGet, "/api/orchestration/preflight?projects=mca-server&group=game&evil=1", "")
+	if recorder.Code != http.StatusOK {
+		t.Fatalf("status = %d, body=%s", recorder.Code, recorder.Body.String())
+	}
+	// 白名单重组：只转发 projects/group，其余参数丢弃。
+	if env.stub.lastPreflightQuery != "group=game&projects=mca-server" {
+		t.Fatalf("forwarded query = %q", env.stub.lastPreflightQuery)
+	}
+	data := decodeData(t, recorder)
+	if data["mode"] != "deploy" {
+		t.Fatalf("preflight passthrough missing report: %v", data)
+	}
+
+	recorder = doJSON(t, env, http.MethodGet, "/api/orchestration/preflight", "")
+	if recorder.Code != http.StatusOK {
+		t.Fatalf("unscoped status = %d", recorder.Code)
+	}
+	if env.stub.lastPreflightQuery != "" {
+		t.Fatalf("unscoped query = %q, want empty", env.stub.lastPreflightQuery)
+	}
+}
+
+func TestContainerTriggerForwardsToken(t *testing.T) {
+	env := newTestEnv(t, "deploy-secret")
+	cookie := login(t, env, "deploy-secret")
+	recorder := doJSON(t, env, http.MethodPost, "/api/orchestration/container-trigger", "", cookie)
+	if recorder.Code != http.StatusAccepted {
+		t.Fatalf("status = %d, want 202; body=%s", recorder.Code, recorder.Body.String())
+	}
+	if env.stub.lastContainerToken != "deploy-secret" {
+		t.Fatalf("container trigger token not injected: %q", env.stub.lastContainerToken)
+	}
+	data := decodeData(t, recorder)
+	if data["type"] != "container-trigger" {
+		t.Fatalf("run snapshot type = %v", data["type"])
+	}
+}
+
+func TestContainerTriggerFailsClosedWithoutToken(t *testing.T) {
+	env := newTestEnv(t, "")
+	recorder := doJSON(t, env, http.MethodPost, "/api/orchestration/container-trigger", "")
+	if recorder.Code != http.StatusServiceUnavailable {
+		t.Fatalf("status = %d, want 503", recorder.Code)
+	}
+	if env.stub.lastContainerToken != "" {
+		t.Fatal("stub should never be reached without a deploy token")
+	}
+}
+
 // --- 只读透传与错误翻译 ---
 
 func TestReadOnlyPassthroughs(t *testing.T) {
@@ -401,8 +470,14 @@ func TestReadOnlyPassthroughs(t *testing.T) {
 		t.Fatalf("manifest status = %d", recorder.Code)
 	}
 	data := decodeData(t, recorder)
-	if _, ok := data["projects"]; !ok {
-		t.Fatalf("manifest passthrough missing projects: %v", data)
+	projects, _ := data["projects"].([]any)
+	if len(projects) != 3 {
+		t.Fatalf("manifest passthrough projects = %d", len(projects))
+	}
+	// 契约 1.5.0：清单视图透传声明的产物来源。
+	first, _ := projects[0].(map[string]any)
+	if first["artifact_source"] != "local_path" {
+		t.Fatalf("artifact_source not passed through: %v", first)
 	}
 
 	recorder = doJSON(t, env, http.MethodGet, "/api/orchestration/validation", "")

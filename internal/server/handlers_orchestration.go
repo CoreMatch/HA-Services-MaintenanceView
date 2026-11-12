@@ -4,7 +4,9 @@ import (
 	"encoding/json"
 	"fmt"
 	"net/http"
+	"net/url"
 	"regexp"
+	"strings"
 
 	"HA-Services-MaintenanceView/internal/cupbearer"
 	"HA-Services-MaintenanceView/internal/models"
@@ -102,6 +104,25 @@ func (h *Handler) GetOrchestrationValidation(c *gin.Context) {
 	writeRawPassthrough(c, "deploy validation fetched", raw, uerr)
 }
 
+// GetOrchestrationPreflight 透传只读前置检查报告（分级 blocker/warning）。
+// 查询参数 projects（逗号分隔）与/或 group 限定范围，空 = 全量；参数经
+// 白名单重组后转发，杜绝查询串注入。
+func (h *Handler) GetOrchestrationPreflight(c *gin.Context) {
+	query := url.Values{}
+	if projects := strings.TrimSpace(c.Query("projects")); projects != "" {
+		query.Set("projects", projects)
+	}
+	if group := strings.TrimSpace(c.Query("group")); group != "" {
+		query.Set("group", group)
+	}
+	scope := ""
+	if encoded := query.Encode(); encoded != "" {
+		scope = "?" + encoded
+	}
+	raw, uerr := h.client.DeployPreflightRaw(c.Request.Context(), scope)
+	writeRawPassthrough(c, "preflight fetched", raw, uerr)
+}
+
 // GetOrchestrationStatus 透传项目状态总览。
 func (h *Handler) GetOrchestrationStatus(c *gin.Context) {
 	raw, uerr := h.client.DeployStatusRaw(c.Request.Context())
@@ -195,6 +216,27 @@ func (h *Handler) TriggerRollback(c *gin.Context) {
 	}
 
 	c.Data(http.StatusAccepted, "application/json; charset=utf-8", mustEnvelope("rollback run started", raw))
+}
+
+// TriggerContainerDeploy 触发容器路径的一键触发（栈级：按清单已发布镜像
+// 引用生成 compose override 并 up -d）。栈级动作不逐项目过 manager 闸门，
+// 上游对缺引用/孤儿容器的语义自行报告；凭据仍由服务端注入。
+func (h *Handler) TriggerContainerDeploy(c *gin.Context) {
+	if !h.client.TokenConfigured() {
+		c.JSON(http.StatusServiceUnavailable, gin.H{
+			"success": false,
+			"message": "本实例未配置部署凭据（cupbearer.token），无法触发容器部署",
+		})
+		return
+	}
+
+	raw, uerr := h.client.TriggerContainerDeploy(c.Request.Context())
+	if uerr != nil {
+		writeUpstreamError(c, uerr)
+		return
+	}
+
+	c.Data(http.StatusAccepted, "application/json; charset=utf-8", mustEnvelope("container trigger started", raw))
 }
 
 // gateManagedProjects 对显式列出的项目做 manager 闸门：

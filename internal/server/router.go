@@ -44,11 +44,13 @@ func NewRouter(cfg *models.Config, client *cupbearer.Client, store *state.Store,
 		{
 			orchestration.GET("/manifest", handler.GetOrchestrationManifest)
 			orchestration.GET("/validation", handler.GetOrchestrationValidation)
+			orchestration.GET("/preflight", handler.GetOrchestrationPreflight)
 			orchestration.GET("/status", handler.GetOrchestrationStatus)
 			orchestration.GET("/runs", handler.GetOrchestrationRuns)
 			orchestration.GET("/runs/:id", handler.GetOrchestrationRun)
 			orchestration.POST("/deploy", handler.TriggerDeploy)
 			orchestration.POST("/rollback", handler.TriggerRollback)
+			orchestration.POST("/container-trigger", handler.TriggerContainerDeploy)
 		}
 
 		// 首次运行初始化向导（一键开荒）：透传 Cupbearer bootstrap 层。

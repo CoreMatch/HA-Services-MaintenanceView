@@ -115,6 +115,12 @@ func (c *Client) DeployValidateRaw(ctx context.Context) (json.RawMessage, *Upstr
 	return c.doRaw(ctx, http.MethodGet, "/api/v1/deploy/validate", nil, false)
 }
 
+// DeployPreflightRaw 透传只读前置检查报告；scope 为可选的
+// "?projects=...&group=..." 查询串（已编码，空串 = 全量）。
+func (c *Client) DeployPreflightRaw(ctx context.Context, scope string) (json.RawMessage, *UpstreamError) {
+	return c.doRaw(ctx, http.MethodGet, "/api/v1/deploy/preflight"+scope, nil, false)
+}
+
 func (c *Client) DeployStatusRaw(ctx context.Context) (json.RawMessage, *UpstreamError) {
 	return c.doRaw(ctx, http.MethodGet, "/api/v1/deploy/status", nil, false)
 }
@@ -135,6 +141,12 @@ func (c *Client) TriggerDeploy(ctx context.Context, opts models.RunOptions) (jso
 // TriggerRollback 触发回滚运行（单项目 + 可选级联），返回运行快照原始 JSON。
 func (c *Client) TriggerRollback(ctx context.Context, req models.RollbackRequest) (json.RawMessage, *UpstreamError) {
 	return c.doRaw(ctx, http.MethodPost, "/api/v1/deploy/rollback", req, true)
+}
+
+// TriggerContainerDeploy 触发容器路径一键触发（compose override + up -d），
+// 返回运行快照原始 JSON（运行类型 container-trigger）。
+func (c *Client) TriggerContainerDeploy(ctx context.Context) (json.RawMessage, *UpstreamError) {
+	return c.doRaw(ctx, http.MethodPost, "/api/v1/deploy/container/trigger", struct{}{}, true)
 }
 
 // --- 首次运行初始化（向导）端点：/api/v1/deploy/bootstrap/* ---
